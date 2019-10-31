@@ -5,7 +5,9 @@ using MathNet.Numerics;
 using UnityEngine;
 
 using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Factorization;
 using MathNet.Numerics.LinearAlgebra.Single;
+using Complex = System.Numerics.Complex;
 using Vector = MathNet.Numerics.LinearAlgebra.Double.Vector;
 
 namespace Rossl{
@@ -32,8 +34,8 @@ namespace Rossl{
                 Matrix<float> F;
                 MakeExponentialMap(i, neighbors, out r, out phi);
                 GetUVF(r, phi, neighbors.ToArray(), out F);
-                curvatures[i] = GetMajorCurvature(F);
-                //Debug.Log(i.ToString() + ": " + curvatures[i]);
+                curvatures[i] = GetMajorCurvature(F, i);
+                Debug.Log(i.ToString() + ": " + curvatures[i]);
             }
             return curvatures;
         }
@@ -150,24 +152,39 @@ namespace Rossl{
             return F;
         }
 
-        Tuple<Vector3, float> GetMajorCurvature(Matrix<float> F) { // F: Fu, Fv, Fuu, Fuv, Fvv
-            float lambda1, lambda2, k1, k2;
+        Tuple<Vector3, float> GetMajorCurvature(Matrix<float> F, int i) { // F: Fu, Fv, Fuu, Fuv, Fvv
+            //float lambda1, lambda2, k1, k2;
             
-            Vector3 Fu = new Vector3(F[0, 0], F[0, 1], F[0, 2]);
-            Vector3 Fv = new Vector3(F[1, 0], F[1, 1], F[1, 2]);
-            Vector3 Nu = Vector3.Cross(Fu, Fv).normalized;
+            //Vector3 Fu = new Vector3(F[0, 0], F[0, 1], F[0, 2]);
+            //Vector3 Fv = new Vector3(F[1, 0], F[1, 1], F[1, 2]);
+            //Vector3 Nu = Vector3.Cross(Fu, Fv).normalized;
+            Vector3 Nu = _mesh.normals[i];
             Vector<float> N = DenseVector.OfArray(new float[]{Nu.x, Nu.y, Nu.z});
+            
+            float e = F.Row(0).DotProduct(F.Row(0));
+            float f = F.Row(1).DotProduct(F.Row(0));
+            float g = F.Row(1).DotProduct(F.Row(1));
             
             float l = F.Row(2).DotProduct(N);
             float m = F.Row(3).DotProduct(N);
             float n = F.Row(4).DotProduct(N);
+            
+            Matrix<float> mat = DenseMatrix.OfArray(new float[2,2]{{e, f}, {f, g}}) * DenseMatrix.OfArray(new float[2,2]{{l, m}, {m, n}});
+            Evd<float> eigen = mat.Evd();
+            Matrix<float> eigenVectors = eigen.EigenVectors;
+            Vector<Complex> eigenValues = eigen.EigenValues;
 
-            SolveForLambda(n, m, l, out lambda1, out lambda2);
-            SolveForK(n, m, l, lambda1, out k1);
-            SolveForK(n, m, l, lambda2, out k2);
+            //SolveForLambda(n, m, l, out lambda1, out lambda2);
+            //SolveForK(n, m, l, lambda1, out k1);
+            //SolveForK(n, m, l, lambda2, out k2);
 
-            if (k1 > k2) return new Tuple<Vector3, float>(ParametricTo3D(Fu, Fv, lambda1), k2 / k1);
-            return new Tuple<Vector3, float>(ParametricTo3D(Fu, Fv, lambda2), k1 / k2);
+            Vector<float> lambda1 = eigenVectors.Row(0);
+            Vector<float> lambda2 = eigenVectors.Row(1);
+            float k1 = (float)eigenValues.At(0).Real;
+            float k2 = (float)eigenValues.At(1).Real;
+            
+            if (k1 > k2) return new Tuple<Vector3, float> (new Vector3(lambda1.At(0), lambda1.At(1), 0), k2 / k1);
+            return new Tuple<Vector3, float>(new Vector3(lambda2.At(0), lambda2.At(1), 0), k1 / k2);
         }
 
         void SolveForLambda(float n, float m, float l, out float lambda1, out float lambda2) {
