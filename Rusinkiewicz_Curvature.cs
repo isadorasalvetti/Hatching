@@ -3,10 +3,10 @@ using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using MathEx;
+using MathExNamespace;
 
-namespace Exocortex.DirectX.Direct3D.Meshes {
-	static public class MeshCurvature {
+namespace Rusinkiewicz{
+	static public class RusCurvature {
 
 		// Rotate a coordinate system to be perpendicular to the given normal
 		static public void RotateCoordinateSystem(Vector3 old_u, Vector3 old_v,
@@ -83,7 +83,6 @@ namespace Exocortex.DirectX.Direct3D.Meshes {
 					   old_dcurv4.z * 3.0f * u2 * v2 * v2 +
 					   old_dcurv4.w * v2 * v2 * v2;
 		}
-
 
 		// Given a curvature tensor, find principal directions and curvatures
 		// Makes sure that pdir1 and pdir2 are perpendicular to normal
@@ -170,7 +169,6 @@ namespace Exocortex.DirectX.Direct3D.Meshes {
 		}
 		// Compute principal curvatures and directions.
 		static public void ComputeCurvature(Vector3[] vertices, Vector3[] normals, int[] faceIndices, float[] pointAreas, Vector3[] cornerAreas, out Vector3[] pdir1, out Vector3[] pdir2, out float[] curv1, out float[] curv2) {
-
 			int nv = vertices.Length;
 			int nf = faceIndices.Length / 3;
 
@@ -181,7 +179,6 @@ namespace Exocortex.DirectX.Direct3D.Meshes {
 			float[] curv12 = new float[nv];
 
 			// Set up an initial coordinate system per vertex
-
 			for (int i = 0; i < faceIndices.Length / 3; i++) {
 				int face0 = faceIndices[i * 3 + 0];
 				int face1 = faceIndices[i * 3 + 1];
@@ -209,7 +206,6 @@ namespace Exocortex.DirectX.Direct3D.Meshes {
 				Vector3[] e = new Vector3[]{ vertices[face2] - vertices[face1],
 			     vertices[face0] - vertices[face2],
 			     vertices[face1] - vertices[face0] };
-
 				// N-T-B coordinate system per face
 				Vector3 t = e[0];
 				t.Normalize();
@@ -281,10 +277,8 @@ namespace Exocortex.DirectX.Direct3D.Meshes {
 			}
 		}
 
-
 		// Compute derivatives of curvature.
 		static public void ComputeCurvatureDerivatives(Vector3[] vertices, Vector3[] pdir1, Vector3[] pdir2, float[] curv1, float[] curv2, Vector3[] normals, int[] faceIndices, float[] pointAreas, Vector3[] cornerAreas, out Vector4[] dcurv) {
-
 			// Resize the arrays we'll be using
 			int nv = vertices.Length;
 			int nf = faceIndices.Length / 3;
@@ -372,7 +366,6 @@ namespace Exocortex.DirectX.Direct3D.Meshes {
 		}
 
 		static public void ComputePointAndCornerAreas(Vector3[] vertices, int[] faceIndices, out float[] pointAreas, out Vector3[] cornerAreas) {
-
 			
 			int nf = faceIndices.Length / 3;
 			int nv = vertices.Length;
