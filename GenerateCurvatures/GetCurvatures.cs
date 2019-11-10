@@ -15,15 +15,14 @@ public class GetCurvatures : MonoBehaviour
         _lastColors = new Color[meshes.Length][];
         for (int m = 0; m < meshes.Length; m++){
             Mesh mesh = meshes[m].sharedMesh;
-            RosslCurvature cvr = new RosslCurvature();
-
             List<List<int>> mapFromNew;
-            Tuple<Vector3, float>[] curvatures = cvr.ComputeCurvature(GetSmoothMesh(mesh, out mapFromNew));
+            RosslCurvature cvr = new RosslCurvature(GetSmoothMesh(mesh, out mapFromNew));
+            Tuple<Vector3, float>[] curvatures = cvr.ComputeCurvature();
             Color[] newColors = new Color[mesh.vertices.Length];
             
-            float maxCurv = MaxCurvature(Array.ConvertAll(curvatures, j => j.Item2));
-            //Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item2, 0, 0));
-            Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(Mathf.Abs(j.Item1.x), Mathf.Abs(j.Item1.y), Mathf.Abs(j.Item1.z))*(1-j.Item2));
+            //float maxCurv = MaxCurvature(Array.ConvertAll(curvatures, j => j.Item2));
+            //Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item2/maxCurv, -j.Item2/maxCurv, 0));
+            Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item1.x, j.Item1.y, j.Item1.z));
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){
                 for (int j = 0; j < mapFromNew[i].Count; j++) {
@@ -135,7 +134,7 @@ public class GetCurvatures : MonoBehaviour
         for (int i=0; i<curv.Length; i++){
             if (curv[i]>max) max = curv[i];
         }
-        return Mathf.Sqrt(max);
+        return max;
     }
 
 }

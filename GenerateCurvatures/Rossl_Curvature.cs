@@ -12,6 +12,11 @@ using Vector = MathNet.Numerics.LinearAlgebra.Double.Vector;
 
 namespace Rossl{
     public class RosslCurvature {
+
+        public RosslCurvature(Mesh mesh){
+            _mesh = mesh;
+        }
+
         private int[] _cornerTable;
         private Mesh _mesh;
 
@@ -23,8 +28,12 @@ namespace Rossl{
             return 3 * (corner / 3) + (corner + 2) % 3;
         }
 
-        public Tuple<Vector3, float>[] ComputeCurvature(Mesh mesh){
-            _mesh = mesh;
+        public Tuple<Vector3, float>[] ComputeCurvature(){
+            int n = _mesh.vertexCount;
+            float [] k1 = new float[n];
+            float [] k2 = new float[n];
+            Vector<float> [] d1 = new Vector<float>[n];
+            Vector<float> [] d2 = new Vector<float>[n];
             Tuple<Vector3, float>[] curvatures = new Tuple<Vector3, float>[_mesh.vertices.Length];
             BuildCornerTable();
             
@@ -33,11 +42,17 @@ namespace Rossl{
                 float[] r, phi;
                 Matrix<float> F;
                 MakeExponentialMap(i, neighbors, out r, out phi);
-                GetUVF(r, phi, neighbors.ToArray(), out F);
-                curvatures[i] = GetMajorCurvature(F, i);
+                GetUVF(r, phi, neighbors.ToArray(), i, out F);
+                GetCurvatures(F, out k1[i], out k2[i], out d1[i], out d2[i]);
+                Vector3 output = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), d1[i][0], d1[i][1]);
+                curvatures[i] = new Tuple<Vector3, float>(output, k2[i]/k1[i]);
                 Debug.Log(i.ToString() + ": " + curvatures[i]);
             }
             return curvatures;
+        }
+
+        Vector3 vectorToUnity(Vector<float> v){
+            return new Vector3(v[0], v[1], v[2]);
         }
 
         void BuildCornerTable(){
@@ -112,18 +127,24 @@ namespace Rossl{
             }
             float maxAngle = accumulatedAngle + Mathf.Acos(Vector3.Dot(vn[neighboors.Count-1].normalized, vn[0].normalized));
             ScalePhi(ref phi, maxAngle);
-            
+
             //Debug.Log("Neighbor Amount: " + neighboors.Count.ToString());
             //Debug.Log("Phi: " + string.Join(", ", new List<float>(phi).ConvertAll(j => j.ToString()).ToArray()));
             //Debug.Log("R: " + string.Join(", ", new List<float>(r).ConvertAll(j => j.ToString()).ToArray()));
         }
 
-        void GetUVF(float[] r, float[] phi, int[] neighbors, out Matrix<float> F){
+        void GetParametricSpaceBasis(int vert, int ng0, out Vector3 e1, out Vector3 e2, out Vector3 e3){
+            e1 = _mesh.vertices[_mesh.triangles[ng0]] - _mesh.vertices[vert];
+            e3 = _mesh.normals[vert];
+            e2 = Vector3.Cross(e3, e1);
+            }
+
+        void GetUVF(float[] r, float[] phi, int[] neighbors, int v, out Matrix<float> F){
             float[,] V = new float[r.Length, 5];
             float[,] Q = new float[r.Length, 3];
 
             for (int i = 0; i < r.Length; i++){
-                Vector3 vert = _mesh.vertices[_mesh.triangles[neighbors[i]]];
+                Vector3 vert = _mesh.vertices[_mesh.triangles[neighbors[i]]] - _mesh.vertices[v];
                 Q[i, 0] = vert.x;
                 Q[i, 1] = vert.y;
                 Q[i, 2] = vert.z;
@@ -152,13 +173,12 @@ namespace Rossl{
             return F;
         }
 
-        Tuple<Vector3, float> GetMajorCurvature(Matrix<float> F, int i) { // F: Fu, Fv, Fuu, Fuv, Fvv
+        void GetCurvatures(Matrix<float> F, out float k1, out float k2, out Vector<float> d1, out Vector<float> d2) { // F: Fu, Fv, Fuu, Fuv, Fvv
             //float lambda1, lambda2, k1, k2;
             
-            //Vector3 Fu = new Vector3(F[0, 0], F[0, 1], F[0, 2]);
-            //Vector3 Fv = new Vector3(F[1, 0], F[1, 1], F[1, 2]);
-            //Vector3 Nu = Vector3.Cross(Fu, Fv).normalized;
-            Vector3 Nu = _mesh.normals[i];
+            Vector3 Fu = new Vector3(F[0, 0], F[0, 1], F[0, 2]);
+            Vector3 Fv = new Vector3(F[1, 0], F[1, 1], F[1, 2]);
+            Vector3 Nu = Vector3.Cross(Fu, Fv).normalized;
             Vector<float> N = DenseVector.OfArray(new float[]{Nu.x, Nu.y, Nu.z});
             
             float e = F.Row(0).DotProduct(F.Row(0));
@@ -168,23 +188,36 @@ namespace Rossl{
             float l = F.Row(2).DotProduct(N);
             float m = F.Row(3).DotProduct(N);
             float n = F.Row(4).DotProduct(N);
-            
+
             Matrix<float> mat = DenseMatrix.OfArray(new float[2,2]{{e, f}, {f, g}}) * DenseMatrix.OfArray(new float[2,2]{{l, m}, {m, n}});
             Evd<float> eigen = mat.Evd();
             Matrix<float> eigenVectors = eigen.EigenVectors;
             Vector<Complex> eigenValues = eigen.EigenValues;
-
-            //SolveForLambda(n, m, l, out lambda1, out lambda2);
-            //SolveForK(n, m, l, lambda1, out k1);
-            //SolveForK(n, m, l, lambda2, out k2);
-
-            Vector<float> lambda1 = eigenVectors.Row(0);
-            Vector<float> lambda2 = eigenVectors.Row(1);
-            float k1 = (float)eigenValues.At(0).Real;
-            float k2 = (float)eigenValues.At(1).Real;
             
-            if (k1 > k2) return new Tuple<Vector3, float> (new Vector3(lambda1.At(0), lambda1.At(1), 0), k2 / k1);
-            return new Tuple<Vector3, float>(new Vector3(lambda2.At(0), lambda2.At(1), 0), k1 / k2);
+            d1 = eigenVectors.Row(0);
+            d2 = eigenVectors.Row(1);
+            k1 = (float)eigenValues.At(0).Real;
+            k2 = (float)eigenValues.At(1).Real;
+            
+            if (Mathf.Abs(k1) < Mathf.Abs(k2)) return;
+
+            swap(ref k1, ref k2);
+            swap(ref d1, ref d2);
+
+        }
+
+        void swap<T>(ref T a, ref T b){
+            T temp = a;
+            a = b;
+            b = temp;
+        }
+
+        Vector3 ChangeBasis(Vector3 e1, Vector3 e2, Vector3 e3, Vector<float> v){
+            Matrix<float> mat = DenseMatrix.OfArray(new float[3, 3] {{e1.x, e2.x, e3.x}, 
+                                                                     {e1.y, e2.y, e3.y},
+                                                                     {e1.y, e2.y, e3.y}});            
+            v = mat*DenseVector.OfEnumerable(v.Concat(new float[1]{0}));
+            return new Vector3(v.At(0), v.At(1), v.At(2)).normalized;
         }
 
         void SolveForLambda(float n, float m, float l, out float lambda1, out float lambda2) {
@@ -200,8 +233,8 @@ namespace Rossl{
             if (float.IsNaN(k)) k = 1;
         }
 
-        Vector3 ParametricTo3D(Vector3 Fu, Vector3 Fv, float lambda) {
-            return (Fu + lambda * Fv).normalized;
+        Vector3 ParametricTo3D(Vector3 Fu, Vector3 Fv, float u, float v) {
+            return (v * Fu.normalized + u * Fv.normalized).normalized;
         }
 
         void ScalePhi(ref float[] phi, float maxAngle){
