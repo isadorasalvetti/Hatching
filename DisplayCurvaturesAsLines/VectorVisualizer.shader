@@ -4,11 +4,45 @@ Shader "Unlit/ColorAsLines"
 {
     Properties
     {
-        _Color("Main Color", Color) = (1,1,1,1)
-        _Size("Line Length", Float) = 0.1
+        _MeshColor("Mesh Color", Color) = (0,0,1,1)
+        _LineColor("Line Color", Color) = (1,1,0,1)
+        _Size("Line Size", Float) = 0.1
     }
     SubShader
     {
+    Pass
+        {
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+ 
+            struct appdata
+            {
+                float4 vertex : POSITION;
+            };
+            
+            struct v2f
+            {
+                float4 vertex : SV_POSITION;
+            };
+ 
+            fixed4 _MeshColor;
+           
+            v2f vert (appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                return o;
+            }
+           
+            fixed4 frag (v2f i) : SV_Target
+            {
+                return _MeshColor;
+            }
+            ENDCG
+        }
+        
         Pass
         {
             CGPROGRAM
@@ -35,7 +69,7 @@ Shader "Unlit/ColorAsLines"
                 float4 pos: POSITION;
             };
  
-            fixed4 _Color;
+            fixed4 _LineColor;
             float _Size;
            
             v2g vert (appdata v)
@@ -67,7 +101,7 @@ Shader "Unlit/ColorAsLines"
            
             fixed4 frag (g2f i) : SV_Target
             {
-                return _Color;
+                return _LineColor;
             }
             ENDCG
         }

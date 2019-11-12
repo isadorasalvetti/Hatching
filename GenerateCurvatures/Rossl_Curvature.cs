@@ -45,7 +45,7 @@ namespace Rossl{
                 GetUVF(r, phi, neighbors.ToArray(), i, out F);
                 GetCurvatures(F, out k1[i], out k2[i], out d1[i], out d2[i]);
                 Vector3 output = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), d1[i][0], d1[i][1]);
-                curvatures[i] = new Tuple<Vector3, float>(output, k2[i]/k1[i]);
+                curvatures[i] = new Tuple<Vector3, float>(output, Mathf.Abs(k2[i]/k1[i]));
                 Debug.Log(i.ToString() + ": " + curvatures[i]);
             }
             return curvatures;

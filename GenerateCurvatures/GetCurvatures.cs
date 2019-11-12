@@ -22,7 +22,7 @@ public class GetCurvatures : MonoBehaviour
             
             //float maxCurv = MaxCurvature(Array.ConvertAll(curvatures, j => j.Item2));
             //Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item2/maxCurv, -j.Item2/maxCurv, 0));
-            Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item1.x, j.Item1.y, j.Item1.z));
+            Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item1.x, j.Item1.y, j.Item1.z, j.Item2));
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){
                 for (int j = 0; j < mapFromNew[i].Count; j++) {
