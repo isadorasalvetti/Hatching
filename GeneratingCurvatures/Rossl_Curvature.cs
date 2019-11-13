@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathNet.Numerics;
-using UnityEngine;
-
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Factorization;
 using MathNet.Numerics.LinearAlgebra.Single;
+using UnityEngine;
 using Complex = System.Numerics.Complex;
-using Vector = MathNet.Numerics.LinearAlgebra.Double.Vector;
 
-namespace Rossl{
+namespace Hatching.GeneratingCurvatures{
     public class RosslCurvature {
 
         public RosslCurvature(Mesh mesh){

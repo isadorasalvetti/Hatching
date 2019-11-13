@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using MathExNamespace;
 
-namespace Rusinkiewicz{
+namespace Hatching.GeneratingCurvatures{
 	static public class RusCurvature {
 
 		// Rotate a coordinate system to be perpendicular to the given normal

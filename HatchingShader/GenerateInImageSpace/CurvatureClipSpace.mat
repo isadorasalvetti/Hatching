@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Hatching_frag
-  m_Shader: {fileID: 4800000, guid: 33a3d0d6c1770a940a4432a66837113f, type: 3}
+  m_Name: CurvatureClipSpace
+  m_Shader: {fileID: 4800000, guid: 83c8b32dec8fc584ab3033e716dacc78, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -19,10 +19,9 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _Hatching:
-        m_Texture: {fileID: 18700000, guid: ca6263423fe194242a0f263ae6918535, type: 2}
-        m_Scale: {x: 8, y: 8}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    m_Floats:
-    - _WhiteOffset: 1.16
+    m_Floats: []
     m_Colors: []

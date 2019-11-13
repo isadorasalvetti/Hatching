@@ -1,8 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace MathExNamespace
+namespace Hatching
 {
     public class Vector4Ex{
         public static Vector4 FromArray(float[] a){
