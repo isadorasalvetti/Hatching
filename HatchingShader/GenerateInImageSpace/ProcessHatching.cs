@@ -32,7 +32,7 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
             for (int u=0; u < _texture.width; u += _gridSize)
                 for (int v = 0; v < _texture.width; v += _gridSize)
                 {
-                    Color pixelColor = _texture.GetPixels(u, v, 1, 1)[0];
+                    Color pixelColor = _texture.GetPixel(u, v);
                     if (Mathf.Abs(pixelColor.r) > 0.01 || Mathf.Abs(pixelColor.g) > 0.01)
                         AddLine(new Vector2(u, v), new Vector2(pixelColor.r, pixelColor.g));
                 }
@@ -41,14 +41,25 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
         void AddLine(Vector2 seed, Vector2 direction)
         {
             List<Vector2> line = new List<Vector2>();
-            line.Add(seed);
+            AddPoint(seed, direction, ref line);
+            AddPoint(seed, direction, ref line, mult:-1);
+            Lines.Append(line);
+        }
+
+        void AddPoint(Vector2 previousPoint, Vector2 direction, ref List<Vector2> line, float mult = 1)
+        {
+            line.Add(previousPoint);
             for (int i = 0; i < 1000; i++) //Sanity check, no infinity loops
             {
-                Vector2 newPoint = seed + direction * _dTest;
+                Vector2 newPoint = previousPoint + _dTest * mult * direction;
                 direction = rg(_texture.GetPixel((int)newPoint.x, (int)newPoint.y));
-                if 
+                if (Mathf.Abs(direction.x) > 0.01f && Mathf.Abs(direction.y) > 0.01f)
+                {
+                    if (mult > 0) line.Append(newPoint);
+                    else line.Insert(0, newPoint); // Better data storage needed
+                    AddPoint(newPoint, direction, ref line, mult);
+                }
             }
-            Lines.Append(line);
         }
 
         Vector2 rg(Color color)
