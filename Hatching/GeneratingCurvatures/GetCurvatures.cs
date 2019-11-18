@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Hatching.HatchingShader.GenerateInImageSpace;
 using UnityEngine;
 
 namespace Hatching.GeneratingCurvatures
