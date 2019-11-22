@@ -8,6 +8,7 @@ using UnityEngine.Experimental.Rendering;
 public class HatchingCamera : MonoBehaviour
 {
     public bool getAnImage = false;
+    public float dSeparation = 0.001f;
     
     private void OnRenderImage(RenderTexture src, RenderTexture dst)
     {
@@ -17,7 +18,7 @@ public class HatchingCamera : MonoBehaviour
             RenderTexture.active = src;
             texture.ReadPixels(new Rect(0, 0, src.width, src.height), 0, 0);
             texture.Apply();
-            ProcessHatching hatching = new ProcessHatching(texture);
+            ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation);
             getAnImage = false;
         }
         Graphics.Blit(src, dst);

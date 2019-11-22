@@ -1,11 +1,13 @@
 ﻿using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.Primitives;
 using UnityEngine;
 
 using Color = UnityEngine.Color;
-using DwColor = System.Drawing.Color;
-using Graphics = System.Drawing.Graphics;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace Hatching.HatchingShader.GenerateInImageSpace
 {
@@ -20,7 +22,7 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
         private List<List<Vector2>> Lines = new List<List<Vector2>>(); //Stores line points, in order from start to end.
         private List<List<Vector2>> PointGrid = new List<List<Vector2>>(); //Stores points in a grid. Facilitate distance calculations
         
-        public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.9f,
+        public ProcessHatching(Texture2D texture, float dSeparation = 0.001f, float dTest = 0.9f,
             int gridSize = 0, int width = 0)
         {
             _texture = texture;
@@ -43,14 +45,12 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
                     if (Mathf.Abs(pixelColor.r) > 0.01 || Mathf.Abs(pixelColor.g) > 0.01)
                     {
                         AddLine(new Vector2(u, v), new Vector2(pixelColor.r, pixelColor.g));
-                        //u = _texture.width; v = _texture.height;
                     }
                 }
         }
 
         void AddLine(Vector2 seed, Vector2 direction)
         {
-            Debug.Log("AddingLine for " + seed.ToString());
             List<Vector2> line = new List<Vector2>();
             Vector2 newPoint = seed;
             foreach (int mult in new int[2]{1, -1})
@@ -61,32 +61,36 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
                     if (mult > 0) line.Add(newPoint);
                     else line.Insert(0, newPoint);
 
-                    newPoint = GetNextPoint(newPoint, direction, mult:mult);
+                    newPoint = GetNextPoint(newPoint, ref direction, mult:mult);
+                    Debug.Log(direction);
                 }
             Lines.Add(line);
         }
 
-        Vector2 GetNextPoint(Vector2 previousPoint, Vector2 direction, float mult = 1)
+        Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, float mult = 1)
         {
             Vector2 newPoint = previousPoint + _dTest * mult * direction;
             direction = rg(_texture.GetPixel((int)newPoint.x, (int)newPoint.y));
-            if (Mathf.Abs(direction.x) > 0.01f || Mathf.Abs(direction.y) > 0.01f) return newPoint;
+            if (Mathf.Abs(direction.x) > 0.01f || Mathf.Abs(direction.y) > 0.01f)
+            {
+                direction = direction * 2 - Vector2.one;
+                return newPoint;
+            }
             return Vector2.zero;
         }
 
         void DrawHatchings()
         {
             Debug.Log("Drawing Lines");
-            Bitmap bitmap = new Bitmap(_texture.width, _texture.height);
-            Graphics graphics = Graphics.FromImage(bitmap);
-            graphics.Clear(DwColor.White);
+            Image bitmap = new Image<Rgba32>(_texture.width, _texture.height);
             foreach (List<Vector2> line in Lines)
             {
                 PointF[] pointFline = new PointF[line.Count];
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
-                graphics.DrawCurve(new Pen(DwColor.Black), pointFline);
+                Debug.Log("Phi: " + string.Join(", ", new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
+                bitmap.Mutate(x => x.DrawLines(Rgba32.Black, 2, pointFline));
             }
-            bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", ImageFormat.Png);
+            bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
         }
 
         Vector2 rg(Color color)
