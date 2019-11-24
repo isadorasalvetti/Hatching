@@ -12,10 +12,18 @@ namespace Hatching.GeneratingCurvatures{
 
         public RosslCurvature(Mesh mesh){
             _mesh = mesh;
+            _vertexNeighboors = new List<List<int>>();
         }
 
+        private List<List<int>> _vertexNeighboors;
         private int[] _cornerTable;
         private Mesh _mesh;
+
+        float [] k1; //minor
+        float [] k2; //major
+        Vector<float> [] d1;
+        Vector<float> [] d2;
+        Vector3 [] principalDirections;
 
         static int Next(int corner) {
             return 3 * (corner / 3) + (corner + 1) % 3;
@@ -25,27 +33,46 @@ namespace Hatching.GeneratingCurvatures{
             return 3 * (corner / 3) + (corner + 2) % 3;
         }
 
-        public Tuple<Vector3, float>[] ComputeCurvature(){
+        public List<List<int>> GetVertexNeighboors() {
+            if(_vertexNeighboors != null) return _vertexNeighboors;
+            Debug.Log("Curvature information has not been computed"); return new List<List<int>>();
+        }
+
+        public Vector3[] GetPrincipalDirections() {
+            if(principalDirections != null) return principalDirections;
+            Debug.Log("Curvature information has not been computed"); return new Vector3[0];
+        }
+
+        public float[] GetCurvatureRatio() {
+            if(k1 != null){
+                float[] ratios = new float [_mesh.vertexCount];
+                for(int i = 0; i < ratios.Length; i++ ) ratios[i] = k2[i] / k1[i];
+                return ratios;
+            };
+            Debug.Log("Curvature information has not been computed"); return new float[0];
+        }
+
+        public void ComputeCurvature(){
             int n = _mesh.vertexCount;
-            float [] k1 = new float[n];
-            float [] k2 = new float[n];
-            Vector<float> [] d1 = new Vector<float>[n];
-            Vector<float> [] d2 = new Vector<float>[n];
-            Tuple<Vector3, float>[] curvatures = new Tuple<Vector3, float>[_mesh.vertices.Length];
+            k1 = new float[n];
+            k2 = new float[n];
+            principalDirections = new Vector3[n];
+            d1 = new Vector<float>[n];
+            d2 = new Vector<float>[n];
+
             BuildCornerTable();
             
             for (int i = 0; i < _mesh.vertices.Length; i++){
-                List<int> neighbors = GetOrderedNeighboors(i);
+                List<int> neighboors = GetOrderedNeighboors(i);
+                _vertexNeighboors.Add(neighboors);
                 float[] r, phi;
                 Matrix<float> F;
-                MakeExponentialMap(i, neighbors, out r, out phi);
-                GetUVF(r, phi, neighbors.ToArray(), i, out F);
+                MakeExponentialMap(i, neighboors, out r, out phi);
+                GetUVF(r, phi, neighboors.ToArray(), i, out F);
                 GetCurvatures(F, out k1[i], out k2[i], out d1[i], out d2[i]);
-                Vector3 output = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), d1[i][0], d1[i][1]);
-                curvatures[i] = new Tuple<Vector3, float>(output, Mathf.Abs(k2[i]/k1[i]));
-                Debug.Log(i.ToString() + ": " + curvatures[i]);
+                principalDirections[i] = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), d1[i][0], d1[i][1]);
+                //Debug.Log(i.ToString() + ": " + curvatures[i]);
             }
-            return curvatures;
         }
 
         Vector3 vectorToUnity(Vector<float> v){

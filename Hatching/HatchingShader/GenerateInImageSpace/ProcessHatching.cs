@@ -42,38 +42,41 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
                 for (int v = 0; v < _texture.height; v += _gridSize)
                 {
                     Color pixelColor = _texture.GetPixel(u, v);
-                    if (Mathf.Abs(pixelColor.r) > 0.01 || Mathf.Abs(pixelColor.g) > 0.01)
+                    if (Mathf.Abs(pixelColor.b) < 0.5f)
                     {
                         AddLine(new Vector2(u, v), new Vector2(pixelColor.r, pixelColor.g));
                     }
                 }
         }
 
-        void AddLine(Vector2 seed, Vector2 direction)
+        void AddLine(Vector2 seed, Vector2 initialDirection)
         {
             List<Vector2> line = new List<Vector2>();
-            Vector2 newPoint = seed;
-            foreach (int mult in new int[2]{1, -1})
-                for (int i = 0; i < 500; i++)
+            foreach (int mult in new int[2]{1, -1}){
+                Vector2 newPoint = seed;
+                Vector2 direction = initialDirection*mult;
+                for (int i = 0; i < 1000; i++)
                 {
                     if (newPoint == Vector2.zero) break;
                     
                     if (mult > 0) line.Add(newPoint);
                     else line.Insert(0, newPoint);
-
                     newPoint = GetNextPoint(newPoint, ref direction, mult:mult);
-                    Debug.Log(direction);
                 }
+            }
             Lines.Add(line);
         }
 
         Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, float mult = 1)
         {
-            Vector2 newPoint = previousPoint + _dTest * mult * direction;
-            direction = rg(_texture.GetPixel((int)newPoint.x, (int)newPoint.y));
-            if (Mathf.Abs(direction.x) > 0.01f || Mathf.Abs(direction.y) > 0.01f)
+            Vector2 newPoint = previousPoint + _dTest * direction;
+            Color pixelColor = _texture.GetPixel((int)newPoint.x, -(int)newPoint.y);
+            Vector2 newDirection = rg(pixelColor);
+            if (Mathf.Abs(pixelColor.b) < 0.5f)
             {
-                direction = direction * 2 - Vector2.one;
+                newDirection = newDirection * 2 - Vector2.one;
+                if(Vector3.Dot(direction, newDirection) > 0) direction = -newDirection;
+                else direction = newDirection;
                 return newPoint;
             }
             return Vector2.zero;
@@ -87,10 +90,11 @@ namespace Hatching.HatchingShader.GenerateInImageSpace
             {
                 PointF[] pointFline = new PointF[line.Count];
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
-                Debug.Log("Phi: " + string.Join(", ", new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(Rgba32.Black, 2, pointFline));
+                Debug.Log("Line: " + string.Join(", ", new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
+                bitmap.Mutate(x => x.DrawLines(Rgba32.Black, 1, pointFline));
             }
-            bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
+            //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
+            bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
         }
 
         Vector2 rg(Color color)

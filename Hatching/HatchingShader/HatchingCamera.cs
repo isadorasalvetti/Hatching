@@ -14,12 +14,12 @@ public class HatchingCamera : MonoBehaviour
     {
         if (getAnImage)
         {
+            getAnImage = false;
             Texture2D texture = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
             RenderTexture.active = src;
             texture.ReadPixels(new Rect(0, 0, src.width, src.height), 0, 0);
             texture.Apply();
             ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation);
-            getAnImage = false;
         }
         Graphics.Blit(src, dst);
     }

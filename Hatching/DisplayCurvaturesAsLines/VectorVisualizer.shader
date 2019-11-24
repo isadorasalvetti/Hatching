@@ -86,7 +86,7 @@ Shader "Unlit/ColorAsLines"
             {
                 for(int i = 0; i < 3; i++)
                 {
-                    float4 p1 = UnityObjectToClipPos(v[i].vertex - _Size*v[i].color);
+                    float4 p1 = UnityObjectToClipPos(v[i].vertex);
                     float4 p2 = UnityObjectToClipPos(v[i].vertex + _Size*v[i].color);
 
                     g2f o1;

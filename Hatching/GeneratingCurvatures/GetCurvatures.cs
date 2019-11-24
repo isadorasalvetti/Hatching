@@ -15,13 +15,15 @@ namespace Hatching.GeneratingCurvatures
             for (int m = 0; m < meshes.Length; m++){
                 Mesh mesh = meshes[m].sharedMesh;
                 List<List<int>> mapFromNew;
-                RosslCurvature cvr = new RosslCurvature(GetSmoothMesh(mesh, out mapFromNew));
-                Tuple<Vector3, float>[] curvatures = cvr.ComputeCurvature();
+
+                Mesh smoothMesh = GetSmoothMesh(mesh, out mapFromNew);
+                
+                RosslCurvature cvr = new RosslCurvature(smoothMesh);
+                cvr.ComputeCurvature();
+                
                 Color[] newColors = new Color[mesh.vertices.Length];
-            
-                //float maxCurv = MaxCurvature(Array.ConvertAll(curvatures, j => j.Item2));
-                //Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item2/maxCurv, -j.Item2/maxCurv, 0));
-                Color[] curvatureColors = Array.ConvertAll(curvatures, j => new Color(j.Item1.x, j.Item1.y, j.Item1.z, j.Item2));
+                Color[] curvatureColors = Array.ConvertAll(cvr.GetPrincipalDirections(), j => new Color(j.x, j.y, j.z, 1));
+                
                 int displacement = 0;
                 for (int i = 0; i < curvatureColors.Length; i++){
                     for (int j = 0; j < mapFromNew[i].Count; j++) {
