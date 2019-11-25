@@ -1,9 +1,7 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace Hatching.Textures
-{
-	public class CreateTextureArray : ScriptableWizard
+public class CreateTextureArray : ScriptableWizard
 	{
 		public Texture2D [] textures;
 
@@ -42,5 +40,4 @@ namespace Hatching.Textures
 			// Print the path of the created asset
 			Debug.Log(AssetDatabase.GetAssetPath(textureArray));
 		}
-	}
 }

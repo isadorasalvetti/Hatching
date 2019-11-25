@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using Hatching.HatchingShader.GenerateInImageSpace;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+using static ProcessHatching;
 
 public class HatchingCamera : MonoBehaviour
 {
