@@ -71,6 +71,7 @@ Shader "Unlit/ColorAsLines"
  
             fixed4 _LineColor;
             float _Size;
+            float _ImageSpace;
            
             v2g vert (appdata v)
             {
@@ -85,7 +86,7 @@ Shader "Unlit/ColorAsLines"
             void geo(triangle v2g v[3], inout LineStream<g2f> ls)
             {
                 for(int i = 0; i < 3; i++)
-                {
+                {              
                     float4 p1 = UnityObjectToClipPos(v[i].vertex);
                     float4 p2 = UnityObjectToClipPos(v[i].vertex + _Size*v[i].color);
 

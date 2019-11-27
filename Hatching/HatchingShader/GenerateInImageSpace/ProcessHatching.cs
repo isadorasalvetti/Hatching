@@ -46,7 +46,10 @@ public class ProcessHatching
             Color pixelColor = _texture.GetPixel(u, -v);
             if (Mathf.Abs(pixelColor.b) < 0.5f)
             {
-                AddLine(new Vector2(u, v), new Vector2(pixelColor.r, pixelColor.g));
+                PointGrid[(int) (u/_dTest), (int) (v/_dTest)] = true;
+                Vector2 direction = rg(pixelColor);
+                direction = direction * 2 - Vector2.one;
+                AddLine(new Vector2(u, v), direction);
                 break;
             }
         }
@@ -54,48 +57,59 @@ public class ProcessHatching
 
     void GetNextSeed(List<Vector2> line) {
         foreach (Vector2 point in line)
-            foreach (Vector2 displacement in new Vector2 []{new Vector2(_dSeparation, 0),
-                                                            new Vector2(0, _dSeparation)}){
-                Vector2 testPoint = point + displacement;
-                Color pixelColor = _texture.GetPixel((int)testPoint.x, -(int)testPoint.y);
-                if (Mathf.Abs(pixelColor.b) < 0.5f && !PointGrid[(int)(testPoint.x/_dTest), (int)(testPoint.y/_dTest)])
-                    AddLine(testPoint, rg(pixelColor));
+        foreach (Vector2 displacement in new Vector2[] {new Vector2(_dSeparation, 0),
+                                                        new Vector2(0, _dSeparation)}) {
+            Vector2 testPoint = point + displacement;
+            Color pixelColor = _texture.GetPixel((int) testPoint.x, -(int) testPoint.y);
+            if (Mathf.Abs(pixelColor.b) < 0.5f &!
+                PointGrid[(int)(testPoint.x / _dTest), (int)(testPoint.y/_dTest)])
+            {
+                PointGrid[(int)(testPoint.x / _dTest), (int)(testPoint.y / _dTest)] = true;
+                Vector2 direction = rg(pixelColor);
+                direction = direction * 2 - Vector2.one;
+                AddLine(testPoint, direction);
+                break;
             }
+        }
     }
 
     void AddLine(Vector2 seed, Vector2 initialDirection)
     {
         List<Vector2> line = new List<Vector2>();
+        Vector2 newPoint = seed;
         foreach (int mult in new int[2]{1, -1}){
-            Vector2 newPoint = seed;
             Vector2 direction = initialDirection*mult;
-            for (int i = 0; i < 1000; i++)
+            newPoint = seed;
+            for (int i = 0; i < 2000; i++)
             {
                 if (newPoint == Vector2.zero) break;
 
                 if (mult > 0) line.Add(newPoint);
                 else line.Insert(0, newPoint);
-                newPoint = GetNextPoint(newPoint, ref direction, mult:mult);
+                newPoint = GetNextPoint(newPoint, ref direction);
             }
         }
-        if(line.Count > 0) Lines.Add(line);
+        if(line.Count > 2) Lines.Add(line);
         GetNextSeed(line);
-        
     }
 
-    Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, float mult = 1)
+    Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction)
     {
         Vector2 newPoint = previousPoint + _dTest * direction;
+
+        if (newPoint.x < 0 || newPoint.y < 0) return Vector2.zero;
         if (PointGrid[(int)(newPoint.x/_dTest), (int)(newPoint.y/_dTest)]) return Vector2.zero;
         PointGrid[(int)(newPoint.x/_dTest), (int)(newPoint.y/_dTest)] = true;
         
         Color pixelColor = _texture.GetPixel((int)newPoint.x, -(int)newPoint.y);
-        Vector2 newDirection = rg(pixelColor);
         if (Mathf.Abs(pixelColor.b) > 0.5f) return Vector2.zero;
         
+        Vector2 newDirection = rg(pixelColor);
         newDirection = newDirection * 2 - Vector2.one;
-        if(Vector3.Dot(direction, newDirection) < 0) direction = -newDirection;
+        
+        if (Vector3.Dot(direction, newDirection) < 0) direction = -newDirection;
         else direction = newDirection;
+        
         return newPoint;
     }
 
@@ -106,13 +120,13 @@ public class ProcessHatching
         Debug.Log("Lines: " + Lines.Count.ToString());
         foreach (List<Vector2> line in Lines)
         {
-            if (line.Count > 1)
+            if (line.Count > 2)
             {
                 PointF[] pointFline = new PointF[line.Count];
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
-                Debug.Log("Line: " + string.Join(", ",
-                              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(Rgba32.Black, 1, pointFline));
+                //Debug.Log("Line: " + string.Join(", ",
+                //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
+                bitmap.Mutate(x => x.DrawLines(Rgba32.Black, 2, pointFline));
             }
         }
 
