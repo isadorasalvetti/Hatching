@@ -37,6 +37,7 @@
             v2f vert (appdata v)
             {
                 v2f o;
+                if (v.color.x < 0) v.color.xyz *= -1;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.color = UnityObjectToClipPos(v.color);
                 return o;
@@ -44,8 +45,8 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
-                fixed2 curv_direction = i.color.xy/i.color.w;
-                fixed4 col = fixed4((normalize(curv_direction) + 1)/2, 0, 1);
+                fixed3 curv_direction = normalize(i.color.xyz/i.color.w);
+                fixed4 col = fixed4((normalize(curv_direction) + 1)/2, 1);
                 return col;
             }
             ENDCG

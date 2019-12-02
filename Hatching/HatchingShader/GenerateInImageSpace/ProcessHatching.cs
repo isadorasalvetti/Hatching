@@ -20,13 +20,13 @@ public class ProcessHatching
     private List<List<Vector2>> Lines = new List<List<Vector2>>(); //Stores line points, in order from start to end.
     private bool[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
     
-    public ProcessHatching(Texture2D texture, float dSeparation = 0.001f, float dTest = 0.9f,
+    public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.9f,
         int gridSize = 0, int width = 0)
     {
         _texture = texture;
         _dSeparation = (int)(dSeparation * _texture.width);
-        _dSeparation = Mathf.Max(1, _dSeparation);
-        _dTest = dTest * _dSeparation;
+        _dSeparation = Mathf.Max(3, _dSeparation);
+        _dTest = (int)(dTest * _dSeparation);
         if (gridSize > 0) _gridSize = gridSize;
         if (width > 0) _width = width;
         if (width > 0) _width = width;
@@ -46,7 +46,7 @@ public class ProcessHatching
             Color pixelColor = _texture.GetPixel(u, -v);
             if (Mathf.Abs(pixelColor.b) < 0.5f)
             {
-                PointGrid[(int) (u/_dTest), (int) (v/_dTest)] = true;
+                PointGrid[(int)(u/_dTest), (int)(v/_dTest)] = true;
                 Vector2 direction = rg(pixelColor);
                 direction = direction * 2 - Vector2.one;
                 AddLine(new Vector2(u, v), direction);
@@ -56,15 +56,18 @@ public class ProcessHatching
     }
 
     void GetNextSeed(List<Vector2> line) {
-        foreach (Vector2 point in line)
-        foreach (Vector2 displacement in new Vector2[] {new Vector2(_dSeparation, 0),
-                                                        new Vector2(0, _dSeparation)}) {
-            Vector2 testPoint = point + displacement;
-            Color pixelColor = _texture.GetPixel((int) testPoint.x, -(int) testPoint.y);
-            if (Mathf.Abs(pixelColor.b) < 0.5f &!
-                PointGrid[(int)(testPoint.x / _dTest), (int)(testPoint.y/_dTest)])
+        int[] mults = {1, -1};
+        foreach(int mult in mults)
+        foreach(Vector2 point in line){
+            Vector2 testPoint = point + new Vector2(_dSeparation, _dSeparation)*mult;
+            Color pixelColor = _texture.GetPixel((int) testPoint.x, -(int)testPoint.y);
+            bool validGrid = PointGrid[(int)(testPoint.x/_dTest), (int)(testPoint.y/_dTest)] ||
+                                PointGrid[(int)(testPoint.x/_dTest)+1, (int)(testPoint.y/_dTest)] ||
+                                PointGrid[(int)(testPoint.x/_dTest), (int)(testPoint.y/_dTest)+1] ||
+                                PointGrid[(int)(testPoint.x/_dTest)+1, (int)(testPoint.y/_dTest)+1];
+            if (Mathf.Abs(pixelColor.b) < 0.5f &! validGrid)
             {
-                PointGrid[(int)(testPoint.x / _dTest), (int)(testPoint.y / _dTest)] = true;
+                PointGrid[(int)(testPoint.x/_dTest), (int)(testPoint.y/_dTest)] = true;
                 Vector2 direction = rg(pixelColor);
                 direction = direction * 2 - Vector2.one;
                 AddLine(testPoint, direction);
@@ -113,11 +116,14 @@ public class ProcessHatching
         return newPoint;
     }
 
+
+    Rgba32[] colors = {Rgba32.Black, Rgba32.Blue, Rgba32.Red, Rgba32.Yellow, Rgba32.Green};
     void DrawHatchings()
     {
         Debug.Log("Drawing Lines");
         Image bitmap = new Image<Rgba32>(_texture.width, _texture.height);
         Debug.Log("Lines: " + Lines.Count.ToString());
+        int k = 0;
         foreach (List<Vector2> line in Lines)
         {
             if (line.Count > 2)
@@ -126,12 +132,13 @@ public class ProcessHatching
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
                 //Debug.Log("Line: " + string.Join(", ",
                 //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(Rgba32.Black, 2, pointFline));
+                bitmap.Mutate(x => x.DrawLines(colors[k], 2, pointFline));
             }
+            k=(k+1)%5;
         }
 
-        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
-        //bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
+        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
+        bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
     }
 
     Vector2 rg(Color color)
