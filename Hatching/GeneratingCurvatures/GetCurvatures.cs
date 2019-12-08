@@ -18,10 +18,13 @@ public class GetCurvatures : MonoBehaviour
             
             RosslCurvature cvr = new RosslCurvature(smoothMesh);
             cvr.ComputeCurvature();
+
+            var filter = new CurvatureFilter(smoothMesh, cvr.GetVertexNeighboors(), cvr.GetPrincipalDirections(), cvr.GetCurvatureRatio());
+            var filteredDirections = filter.MinimizeEnergy();
             
             Color[] newColors = new Color[mesh.vertices.Length];
             Color[] curvatureColors = Array.ConvertAll(cvr.GetPrincipalDirections(), j => new Color(j.x, j.y, j.z, 1));
-            
+
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){
                 for (int j = 0; j < mapFromNew[i].Count; j++) {
@@ -29,6 +32,7 @@ public class GetCurvatures : MonoBehaviour
                     newColors[mapFromNew[i][j]] = curvatureColors[i];
                 }
             }
+
             mesh.colors = newColors;
             _lastColors[m] = newColors;
         }
