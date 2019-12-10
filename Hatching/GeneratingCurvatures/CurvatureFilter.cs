@@ -56,12 +56,12 @@ public class CurvatureFilter
     Func<double[], double> EnergyFunction = delegate(double[] theta){
         double result = 0;
         for(int i=0; i< _mesh.vertexCount; i++){
-        List<int> neighboors = _neighboors[i];
+            List<int> neighboors = _neighboors[i];
             for(int j=0; j<neighboors.Count; j++){
                 int _j = _mesh.triangles[neighboors[j]];
-                if (!_phi.ContainsKey((i, _j))) Debug.Log("Phi does not contain " + (i, _j).ToString());
-                else if (!_phi.ContainsKey((_j, i))) Debug.Log("!Phi does not contain " + (_j, i).ToString());
-                else result += Math.Cos(4 * ((theta[i]-_phi[(i, _j)]) - (theta[_j]-_phi[(_j, i)])));
+                //if (!_phi.ContainsKey((i, _j))) Debug.Log("Phi does not contain " + (i, _j).ToString());
+                //else if (!_phi.ContainsKey((_j, i))) Debug.Log("!Phi does not contain " + (_j, i).ToString());
+                result += Math.Cos(4 * ((theta[i]-_phi[(i, _j)]) - (theta[_j]-_phi[(_j, i)])));
             }
         }
         return result;
@@ -70,12 +70,12 @@ public class CurvatureFilter
     Func<double[], double[]> EnergyGradient = delegate(double[] theta){
         double[] result = new double[theta.Length];        
         for(int i=0; i< _mesh.vertexCount; i++){
-        List<int> neighboors = _neighboors[i];
-            for(int j=0; j<neighboors.Count; j++){
-                int _j = _mesh.triangles[neighboors[j]];
-                result[i] += -4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
-                result[_j] += 4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
-            }
+            List<int> neighboors = _neighboors[i];
+                for(int j=0; j<neighboors.Count; j++){
+                    int _j = _mesh.triangles[neighboors[j]];
+                    result[i] += -4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
+                    result[_j] += 4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
+                }
         }
         return result;
     };
