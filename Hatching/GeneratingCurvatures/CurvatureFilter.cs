@@ -9,7 +9,9 @@ public class CurvatureFilter
     private String showArray<T>(T[] arr) {
         return string.Join(", ", new List<T>(arr).ConvertAll(j => j.ToString()));
     }
-    public CurvatureFilter(Mesh mesh, List<List<int>> neighboors, Vector3[] curvatures, float[] ratios){
+
+    public CurvatureFilter(Mesh mesh, List<List<int>> neighboors, Vector3[] curvatures, float[] ratios)
+    {
         _mesh = mesh;
         _neighboors = neighboors;
         _curvatures = curvatures;
@@ -20,10 +22,11 @@ public class CurvatureFilter
 
         ComputePhiTheta();
         double[] test_theta = new double[_mesh.vertexCount];
-        for(int i = 0; i < _mesh.vertexCount; i++) test_theta[i] = 0;
+        for (int i = 0; i < _mesh.vertexCount; i++) test_theta[i] = 0;
         Debug.Log("Initial Energy: " + EnergyFunction(test_theta).ToString());
         Debug.Log("Derivatives: " + showArray(EnergyGradient(test_theta)));
         Debug.Log("Current Curvatures: " + showArray(_curvatures));
+    }
 
     private static Mesh _mesh;
     private static List<List<int>> _neighboors;
