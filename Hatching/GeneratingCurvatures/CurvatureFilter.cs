@@ -86,16 +86,12 @@ public class CurvatureFilter
 
     void ComputePhiTheta(){
         for(int i=0; i< _mesh.vertexCount; i++){
-            Vector3 vertexCurvature = _curvatures[i];
+            Vector3 vertexCurvature = _curvatures[i].normalized;
             Vector3 vertexNormal = _mesh.normals[i];
             Vector3 vi =_mesh.vertices[i];
             Vector3 ti = vertexCurvature;
             
-            //float angle = Mathf.Acos(Vector3.Dot(vertexCurvature, ti));
-            //Vector3 cross = Math2.Cross(ref _curvatures[i], ref ti);
-            //if (Vector3.Dot(vertexNormal, cross) < 0) _theta[i] = -angle;
-            //else _theta[i] = angle;
-            _theta[i] = 0;
+            _theta[i] = 1;
             _ti[i] = ti;
 
             List<int> neighboors = _neighboors[i];
@@ -103,8 +99,11 @@ public class CurvatureFilter
                 int _j = _mesh.triangles[neighboors[j]];
                 Vector3 vj = _mesh.vertices[_j];
                 Vector3 vivj = vj - vi;
-                Vector3 vivjDir = vivj - (Vector3.Dot(vivj, vertexNormal)) * vertexNormal.normalized;
-                _phi[(i, _j)] = Mathf.Acos(Vector3.Dot(vivjDir.normalized, ti));
+                Vector3 vivjDir = (vivj - (Vector3.Dot(vivj, vertexNormal)) * vertexNormal.normalized).normalized;
+                float dot = Vector3.Dot(vivjDir, ti);
+                Vector3 cross = Math2.Cross(ref vivjDir, ref ti);
+                if (Vector3.Dot(vertexNormal, cross) < 0) _phi[(i, _j)] = -Mathf.Acos(dot);
+                else _phi[(i, _j)] = Mathf.Acos(dot);
             }
         }
         Debug.Log("Thetas: " + string.Join(", ", new List<double>(_theta).ConvertAll(j => j.ToString())));

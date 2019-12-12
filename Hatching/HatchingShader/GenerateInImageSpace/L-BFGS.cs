@@ -751,8 +751,8 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0)
             {
                 throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
-                                                       "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. Infoc: " +
-                                                       infoc.ToString());
+                                                       "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. \n" +
+                                                       "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());
             }
 
             if (stp == stpmax && f <= ftest1 && dg <= dgtest)
