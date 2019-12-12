@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Hatching;
 using UnityEngine;
 
 public class CurvatureFilter
 {
-    private String showArray(double[] arr) {
-        return string.Join(", ", new List<double>(arr).ConvertAll(j => j.ToString()));
+    private String showArray<T>(T[] arr) {
+        return string.Join(", ", new List<T>(arr).ConvertAll(j => j.ToString()));
     }
     public CurvatureFilter(Mesh mesh, List<List<int>> neighboors, Vector3[] curvatures, float[] ratios){
         _mesh = mesh;
@@ -15,33 +16,14 @@ public class CurvatureFilter
         _ratios = ratios;
 
         _theta = new double[mesh.vertexCount];
+        _ti = new Vector3[mesh.vertexCount];
 
         ComputePhiTheta();
         double[] test_theta = new double[_mesh.vertexCount];
         for(int i = 0; i < _mesh.vertexCount; i++) test_theta[i] = 0;
         Debug.Log("Initial Energy: " + EnergyFunction(test_theta).ToString());
-        double[] gradient = EnergyGradient(_theta);
-        Debug.Log(showArray(gradient));
-
-        /*
-        double EPS = 1e-5;
-        double[] numericalGradient = new double[_theta.Length];
-        for (int i = 0; i < _theta.Length; ++i) {
-            _theta[i] += EPS;
-            double energyForward = EnergyFunction(_theta);
-            _theta[i] -= 2*EPS;
-            double energyBackward = EnergyFunction(_theta);
-            _theta[i] += EPS;
-            numericalGradient[i] = (energyForward - energyBackward)/(2*EPS);
-            if (Math.Abs(numericalGradient[i] - gradient[i]) > 1e-2) {
-                Debug.Log("numerical " + numericalGradient[i].ToString());
-                Debug.Log("analytic " + gradient[i].ToString());
-                throw new Exception("GRADIENT has problem");
-            }
-        }
-        Debug.Log("NUMERICAL GRADIENT " + showArray(numericalGradient));
-        */
-    }
+        Debug.Log("Derivatives: " + showArray(EnergyGradient(test_theta)));
+        Debug.Log("Current Curvatures: " + showArray(_curvatures));
 
     private static Mesh _mesh;
     private static List<List<int>> _neighboors;
@@ -49,9 +31,8 @@ public class CurvatureFilter
     private float[] _ratios;
 
     private double[] _theta;
+    private Vector3[] _ti;
     private static Dictionary<(int x, int y), double> _phi = new Dictionary<(int x, int y), double>();
-
-    private Vector3 ti = new Vector3(1, 0, 0);
 
     Func<double[], double> EnergyFunction = delegate(double[] theta){
         double result = 0;
@@ -80,18 +61,22 @@ public class CurvatureFilter
         return result;
     };
 
-    public double[] MinimizeEnergy(){
-        var lbfgs = new BroydenFletcherGoldfarbShanno(numberOfVariables: _phi.Keys.Count,
+    public Vector3[] MinimizeEnergy(){
+        var lbfgs = new BroydenFletcherGoldfarbShanno(numberOfVariables: _theta.Length,
                                                       function: EnergyFunction, gradient: EnergyGradient);
+        double success = lbfgs.Minimize(_theta);
         double[] solution = lbfgs.Solution;
         Debug.Log("Thetas: " + string.Join(", ", new List<double>(solution).ConvertAll(j => j.ToString())));
-        return solution;
+        Vector3[] newVectors = getNewVectors(solution);
+        Debug.Log("Optimized vectors: " + showArray(newVectors));
+        return newVectors;
     }
 
-    Vector3[] getNewVectors(){
+    Vector3[] getNewVectors(double[] theta){
         Vector3[] filteredCurvatures = new Vector3[_mesh.vertexCount];
         for(int i=0; i< _mesh.vertexCount; i++){
-           filteredCurvatures[i] = _curvatures[i];
+            float degrees = Math2.radToDegree((float) theta[i]);
+            filteredCurvatures[i] = _ti[i];
         }
         return filteredCurvatures;
     }
@@ -101,8 +86,14 @@ public class CurvatureFilter
             Vector3 vertexCurvature = _curvatures[i];
             Vector3 vertexNormal = _mesh.normals[i];
             Vector3 vi =_mesh.vertices[i];
-
-            _theta[i] = Mathf.Acos(Vector3.Dot(_curvatures[i], ti));
+            Vector3 ti = vertexCurvature;
+            
+            //float angle = Mathf.Acos(Vector3.Dot(vertexCurvature, ti));
+            //Vector3 cross = Math2.Cross(ref _curvatures[i], ref ti);
+            //if (Vector3.Dot(vertexNormal, cross) < 0) _theta[i] = -angle;
+            //else _theta[i] = angle;
+            _theta[i] = 0;
+            _ti[i] = ti;
 
             List<int> neighboors = _neighboors[i];
             for(int j=0; j<neighboors.Count; j++){

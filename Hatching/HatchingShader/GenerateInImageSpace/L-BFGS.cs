@@ -126,9 +126,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
     // Line search parameters
     private double gtol = 0.9;
-    private int maxfev = 20;
+    private int maxfev = 40;
 
-    private double tolerance = 1e-10;
+    private double tolerance = 1e-2;
     private int iterations;
     private int evaluations;
 
@@ -749,8 +749,11 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
                 throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
 
             if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0)
+            {
                 throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
-                    "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small.");
+                                                       "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. Infoc: " +
+                                                       infoc.ToString());
+            }
 
             if (stp == stpmax && f <= ftest1 && dg <= dgtest)
                 throw new LineSearchFailedException(5, "The step size has reached the upper bound.");

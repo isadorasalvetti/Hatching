@@ -20,10 +20,10 @@ public class GetCurvatures : MonoBehaviour
             cvr.ComputeCurvature();
 
             var filter = new CurvatureFilter(smoothMesh, cvr.GetVertexNeighboors(), cvr.GetPrincipalDirections(), cvr.GetCurvatureRatio());
-            var filteredDirections = filter.MinimizeEnergy();
+            Vector3[] filteredDirections = filter.MinimizeEnergy();
             
             Color[] newColors = new Color[mesh.vertices.Length];
-            Color[] curvatureColors = Array.ConvertAll(cvr.GetPrincipalDirections(), j => new Color(j.x, j.y, j.z, 1));
+            Color[] curvatureColors = Array.ConvertAll(filteredDirections, j => new Color(j.x, j.y, j.z, 1));
 
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){
