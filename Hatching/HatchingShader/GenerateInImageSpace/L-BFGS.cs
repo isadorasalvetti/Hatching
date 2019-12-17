@@ -125,7 +125,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     private const double stpmax = 1e20;
 
     // Line search parameters
-    private double gtol = 0.9;
+    private double gtol = 1e-5;
     private int maxfev = 40;
 
     private double tolerance = 1e-2;

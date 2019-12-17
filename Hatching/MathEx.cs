@@ -30,6 +30,8 @@ namespace Hatching
 
         public static float radToDegree(float rad) { return rad * (180.0f / PI); }
 
+        public static float aTb(Vector3 a, Vector3 b) { return a.x * b.x + a.y * b.y + a.z * a.y; }
+
     }
 
     public class ArrayEx{
