@@ -1,19 +1,23 @@
 ﻿using UnityEditor;
 using UnityEngine;
 
-namespace Hatching.GeneratingCurvatures
+
+[CustomEditor(typeof(GetCurvatures))]
+public class ObjectBuilderEditor : Editor
 {
-    [CustomEditor(typeof(GetCurvatures))]
-    public class ObjectBuilderEditor : Editor
+    int brightness;
+    void GuiLine( int i_height = 1 )
+   {
+       Rect rect = EditorGUILayout.GetControlRect(false, i_height );
+       rect.height = i_height;
+       EditorGUI.DrawRect(rect, new Color ( 0.5f,0.5f,0.5f, 1 ) );
+   }
+
+    public override void OnInspectorGUI()
     {
-        int brightness;
-        public override void OnInspectorGUI()
-        {
-            DrawDefaultInspector();
-            GetCurvatures myScript = (GetCurvatures)target;
-            if(GUILayout.Button("Compute Curvatures (Rossl)")) myScript.GetCurvatureRossl();
-            else if(GUILayout.Button("Compute Curvatures (Rusinkiewicz)")) myScript.GetCurvatureRusinkiewicz();
-            else if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
-        }
+        DrawDefaultInspector();
+        GetCurvatures myScript = (GetCurvatures)target;
+        if(GUILayout.Button("Compute Curvatures (Rossl)")) myScript.GetCurvatureRossl();
+        if(GUILayout.Button("Filter current")) myScript.ShowNormals();
     }
 }

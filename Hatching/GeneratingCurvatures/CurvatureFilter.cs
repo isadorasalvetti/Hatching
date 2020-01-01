@@ -131,27 +131,49 @@ public class CurvatureFilter
     public Vector3[] AlignDirections()
     {
         int[] triangles = _mesh.triangles;
+        bool[] frozen_triangles = new bool[_mesh.vertices.Length];
         Vector3[] normals = _mesh.normals;
         
-        for (int i = 0; i < triangles.Length/3; i++)
+        // Pool of triangles to evaluate next
+        List<int> triangle_pool = new List<int>();
+        triangle_pool.Add(0);
+
+        for(int count=0; count < 100000; count++)
         {
-            int tria = triangles[i*3+0];
-            int trib = triangles[i*3+1];
-            int tric = triangles[i*3+2];
+            //Stop if there are no availabl triangles
+            if (triangle_pool.Count < 1) break;
+
+            //Get next triangle to evaluate and its vertices
+            int current_triangle = triangle_pool[0];
+            triangle_pool.RemoveAt(0);
+
+            int tria = triangles[current_triangle*3+0];
+            int trib = triangles[current_triangle*3+1];
+            int tric = triangles[current_triangle*3+2];
+
+            // Skip if all triangle vertices are frozen
+            if (frozen_triangles[tria] && frozen_triangles[trib] && frozen_triangles[tric]) continue;
             
-            float maxConsistency = 0;
-            var maxConsistencyCoef = (-1, -1, -1);
+            float maxConsistency = -3;
+            var maxConsistencyCoef = (0, 0, 0);
             
             //Find maximun consisntency
-            for (int k =0; k < 2; k++)
-                for (int l =0; l < 2; l++)
-                    for (int m = 0; m < 2; m++)
+            for (int k =-1; k < 2; k+=2)
+                for (int l =-1; l < 2; l+=2)
+                    for (int m = -1; m < 2; m+=2)
                     {
-                        Vector3 Di = (-2*k+1)*_principalDirections[tria];
-                        Vector3 Dj = (-2*l+1)*_principalDirections[trib];
-                        Vector3 Dk = (-2*l+m)*_principalDirections[tric];
-                        //int consistency_index = k + l * 4 + m * 16;
-                        float my_consistency = Math2.aTb(Di, Dj) + Math2.aTb(Dj, Dk) + Math2.aTb(Dk, Di);
+                        // Do not flip principal directions for frozen vertices
+                        if(k < 0 && frozen_triangles[tria]) continue;
+                        if(l < 0 && frozen_triangles[trib]) continue;
+                        if(m < 0 && frozen_triangles[tric]) continue;
+
+                        Vector3 Di = k*projectVector(_principalDirections[tria], normals[tria]);
+                        Vector3 Dj = l*projectVector(_principalDirections[trib], normals[tria]);
+                        Vector3 Dk = m*projectVector(_principalDirections[tric], normals[tria]);
+                        float my_consistency = Vector3.Dot(Di, Dj) + Vector3.Dot(Dj, Dk) + Vector3.Dot(Dk, Di);
+                        // Debug.Log("Index:" + k.ToString() + l.ToString() + m.ToString() + " Consitency:" + my_consistency);
+                        // Debug.Log("Vertices:" + Di.ToString() + Dj.ToString() + Dk.ToString());
+                        
                         if (my_consistency > maxConsistency)
                         {
                             maxConsistency = my_consistency;
@@ -163,16 +185,33 @@ public class CurvatureFilter
             int inda = maxConsistencyCoef.Item1;
             int indb = maxConsistencyCoef.Item2;
             int indc = maxConsistencyCoef.Item3;
-            _principalDirections[tria] = (-2*inda+1)*_principalDirections[tria];
-            _principalDirections[trib] = (-2*indb+1)*_principalDirections[trib];
-            _principalDirections[tric] = (-2*indc+1)*_principalDirections[tric];
+            //Debug.Log("indices:" + inda.ToString() + indb.ToString() + indc.ToString());
+            //Debug.Log("max consistency:" + maxConsistency);
+            _principalDirections[tria] = inda*_principalDirections[tria];
+            _principalDirections[trib] = indb*_principalDirections[trib];
+            _principalDirections[tric] = indc*_principalDirections[tric];
+
+            frozen_triangles[tria] = true;
+            frozen_triangles[trib] = true;
+            frozen_triangles[tric] = true;
+
+            //Add new triangles
+            for (int i = 0; i<3; i++){
+                foreach (int id in _neighboors[triangles[current_triangle*3+i]]){
+                    int tri_id = id/3;
+                    if(!triangle_pool.Contains(tri_id)) triangle_pool.Add(tri_id);
+                }
+            }
         }
-        
         return _principalDirections;
     }
 
     private Vector3 CtoV(Color c){
         return new Vector3(c.r, c.g, c.b);
+    }
+
+    private Vector3 projectVector(Vector3 vec, Vector3 normal){
+        return (vec - (Vector3.Dot(vec, normal)) * normal).normalized;           
     }
 
 }

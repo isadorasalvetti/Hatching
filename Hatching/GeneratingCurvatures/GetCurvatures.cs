@@ -5,38 +5,63 @@ using UnityEngine;
 
 public class GetCurvatures : MonoBehaviour
 {
-    private Color[][] _lastColors = new Color[0][];
+    private MeshFilter[] _meshes;
 
-    public void GetCurvatureRossl(){
-        MeshFilter[] meshes = GetComponentsInChildren<MeshFilter>();
-        _lastColors = new Color[meshes.Length][];
-        for (int m = 0; m < meshes.Length; m++){
-            Mesh mesh = meshes[m].sharedMesh;
-            List<List<int>> mapFromNew;
+    //Smooth Mesh
+    private bool _initialized;
+    private List<List<int>>[] _mapFromNew;
+    private Mesh[] _smoothMesh;
+    private List<Vector3[]> _principalDirections;
 
-            Mesh smoothMesh = GetSmoothMesh(mesh, out mapFromNew);
+    //Principal Directions
+    private RosslCurvature[] _RosslCrv;
+    private void Initialize(){
+        _meshes = GetComponentsInChildren<MeshFilter>();
+        GetAllSmoothMeshes(out _smoothMesh, out _mapFromNew);
+        _initialized = true;
+    }
+
+    private void GetAllSmoothMeshes(out Mesh[] allSmoothMeshes, out List<List<int>>[] allMapsFromNew){
+        allSmoothMeshes = new Mesh[_meshes.Length];
+        allMapsFromNew = new List<List<int>>[_meshes.Length];
+        for (int m = 0; m < _meshes.Length; m++){
+            Mesh mesh = _meshes[m].sharedMesh;
+            allSmoothMeshes[m]= GetSmoothMesh(mesh, out allMapsFromNew[m]);
+            }
+    }
+
+    public void ComputeCurvatureRossl(){
+        if(!_initialized) Initialize();
+        for (int m = 0; m < _meshes.Length; m++){
+            Mesh mesh = _meshes[m].sharedMesh;
+
+            List<List<int>> mapFromNew = _mapFromNew[m];
+            Mesh smoothMesh = _smoothMesh[m];
             
-            RosslCurvature cvr = new RosslCurvature(smoothMesh);
-            cvr.ComputeCurvature();
+            _RosslCrv[m] = new RosslCurvature(smoothMesh);
+            _RosslCrv[m].ComputeCurvature();
 
-            var filter = new CurvatureFilter(smoothMesh, cvr.GetVertexNeighboors(), cvr.GetPrincipalDirections(), cvr.GetCurvatureRatio());
-            //filter.MinimizeEnergy();
-            //Vector3[] filteredDirections = filter.getNewVectors();
-            Vector3[] filteredDirections = filter.AlignDirections();
+            var filter = new CurvatureFilter(smoothMesh, _RosslCrv[m].GetVertexNeighboors(),
+                                            _RosslCrv[m].GetPrincipalDirections(), _RosslCrv[m].GetCurvatureRatio());
+            _principalDirections[m] = filter.AlignDirections();
+        }
+        ApplyPrincipalDirectios(_principalDirections);
+    }
 
+    public void ApplyPrincipalDirectios(List<Vector3[]> principalDirections){
+        for (int m = 0; m < _meshes.Length; m++){
+            Mesh mesh = _meshes[m].sharedMesh;
             Color[] newColors = new Color[mesh.vertices.Length];
-            Color[] curvatureColors = Array.ConvertAll(filteredDirections, j => new Color(j.x, j.y, j.z, 1));
+            Color[] curvatureColors = Array.ConvertAll(principalDirections[m], j => new Color(j.x, j.y, j.z, 1));
 
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){
-                for (int j = 0; j < mapFromNew[i].Count; j++) {
+                for (int j = 0; j < _mapFromNew[m][i].Count; j++) {
                     displacement += j;
-                    newColors[mapFromNew[i][j]] = curvatureColors[i];
+                    newColors[_mapFromNew[m][i][j]] = curvatureColors[i];
                 }
-            }
-
             mesh.colors = newColors;
-            _lastColors[m] = newColors;
+            }
         }
     }
 
@@ -75,52 +100,6 @@ public class GetCurvatures : MonoBehaviour
         //Debug.Log("Faces: " + string.Join(", ", new List<int>(smoothMesh.triangles).ConvertAll(j => j.ToString())));
         //Debug.Log("Normal (sample): " + smoothMesh.normals[2].ToString() + " vs: " + mesh.normals[2].ToString());
         return smoothMesh;
-    }
-
-    public void GetCurvatureRusinkiewicz(){
-        Vector3[] pdir1, pdir2;
-        float[] curv1, curv2, ratio;
-    
-        MeshFilter[] meshes = GetComponentsInChildren<MeshFilter>();
-        _lastColors = new Color[meshes.Length][];
-        for (int m = 0; m < meshes.Length; m++){
-            List<List<int>> mapFromNew;
-            Mesh mesh = GetSmoothMesh(meshes[m].sharedMesh, out mapFromNew);
-            int[] faces = mesh.triangles;
-            Vector3[] vertices = mesh.vertices;
-            Vector3[] normals = mesh.normals;
-            Vector3[] cornerAreas;
-            float[] pointAreas;
-        
-            RusCurvature.ComputePointAndCornerAreas(vertices, faces, out pointAreas, out cornerAreas);
-            RusCurvature.ComputeCurvature(vertices, normals, faces, pointAreas, cornerAreas, out pdir1, out pdir2, out curv1, out curv2);
-            Color[] colors = new Color[pdir1.Length];
-            ratio = new float[pdir1.Length];
-            for (int i = 0; i < colors.Length; i++) ratio[i] = curv1[i] - curv2[i];
-            for (int i=0; i < pdir1.Length; i++){
-                pdir1[i] = Vector3.Normalize(pdir1[i]);
-                colors[i] = new Color(Mathf.Abs(pdir1[i][0]), Mathf.Abs(pdir1[i][1]), Mathf.Abs(pdir1[i][2]), 0)*ratio[i];
-            }
-        
-            Color[] newColors = new Color[meshes[m].sharedMesh.vertices.Length];
-            int displacement = 0;
-            for (int i = 0; i < colors.Length; i++){
-                for (int j = 0; j < mapFromNew[i].Count; j++) {
-                    displacement += j;
-                    newColors[mapFromNew[i][j]] = colors[i];
-                }
-            }
-            meshes[m].sharedMesh.colors = newColors;
-            _lastColors[m] = newColors;
-        }
-    }
-
-    public void ChangeColorScale(int scale) {
-        MeshFilter[] meshes = GetComponentsInChildren<MeshFilter>();
-        for (int m = 0; m < _lastColors.Length; m++) {
-            Mesh mesh = meshes[m].sharedMesh;
-            mesh.colors = Array.ConvertAll(_lastColors[m], j => j * scale);
-        }
     }
 
     public void ShowNormals(){
