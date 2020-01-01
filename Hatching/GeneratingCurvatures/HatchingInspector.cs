@@ -17,7 +17,7 @@ public class ObjectBuilderEditor : Editor
     {
         DrawDefaultInspector();
         GetCurvatures myScript = (GetCurvatures)target;
-        if(GUILayout.Button("Compute Curvatures (Rossl)")) myScript.GetCurvatureRossl();
+        if(GUILayout.Button("Compute Curvatures (Rossl)")) myScript.ComputeCurvatureRossl();
         if(GUILayout.Button("Filter current")) myScript.ShowNormals();
     }
 }

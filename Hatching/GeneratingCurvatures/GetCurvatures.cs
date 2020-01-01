@@ -8,17 +8,21 @@ public class GetCurvatures : MonoBehaviour
     private MeshFilter[] _meshes;
 
     //Smooth Mesh
-    private bool _initialized;
     private List<List<int>>[] _mapFromNew;
     private Mesh[] _smoothMesh;
     private List<Vector3[]> _principalDirections;
 
     //Principal Directions
-    private RosslCurvature[] _RosslCrv;
+    private RosslCurvature[] _rosslCrv;
+    private CurvatureFilter[] _filter;
+
+
     private void Initialize(){
         _meshes = GetComponentsInChildren<MeshFilter>();
         GetAllSmoothMeshes(out _smoothMesh, out _mapFromNew);
-        _initialized = true;
+
+        _rosslCrv =  new RosslCurvature[_meshes.Length];
+        _principalDirections = new List<Vector3[]>();
     }
 
     private void GetAllSmoothMeshes(out Mesh[] allSmoothMeshes, out List<List<int>>[] allMapsFromNew){
@@ -31,28 +35,38 @@ public class GetCurvatures : MonoBehaviour
     }
 
     public void ComputeCurvatureRossl(){
-        if(!_initialized) Initialize();
+        Initialize();
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
-
-            List<List<int>> mapFromNew = _mapFromNew[m];
             Mesh smoothMesh = _smoothMesh[m];
             
-            _RosslCrv[m] = new RosslCurvature(smoothMesh);
-            _RosslCrv[m].ComputeCurvature();
+            _rosslCrv[m] = new RosslCurvature(smoothMesh);
+            _rosslCrv[m].ComputeCurvature();
 
-            var filter = new CurvatureFilter(smoothMesh, _RosslCrv[m].GetVertexNeighboors(),
-                                            _RosslCrv[m].GetPrincipalDirections(), _RosslCrv[m].GetCurvatureRatio());
-            _principalDirections[m] = filter.AlignDirections();
+            _principalDirections.Add(_rosslCrv[m].GetPrincipalDirections());
         }
-        ApplyPrincipalDirectios(_principalDirections);
+        AlignCurvatures();
+        ApplyPrincipalDirectios();
     }
 
-    public void ApplyPrincipalDirectios(List<Vector3[]> principalDirections){
+    private void AlignCurvatures(){
+        InitializeFilter();
+        for (int m = 0; m < _meshes.Length; m++) _principalDirections[m] = _filter[m].AlignDirections();
+    }
+
+    private void InitializeFilter(){
+        _filter = new CurvatureFilter[_meshes.Length];
+            for (int m = 0; m < _meshes.Length; m++){
+                _filter[m] = new CurvatureFilter(_smoothMesh[m], _rosslCrv[m].GetVertexNeighboors(),
+                                                _principalDirections[m], _rosslCrv[m].GetCurvatureRatio());
+        }
+    }
+
+    public void ApplyPrincipalDirectios(){
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
             Color[] newColors = new Color[mesh.vertices.Length];
-            Color[] curvatureColors = Array.ConvertAll(principalDirections[m], j => new Color(j.x, j.y, j.z, 1));
+            Color[] curvatureColors = Array.ConvertAll(_principalDirections[m], j => new Color(j.x, j.y, j.z, 1));
 
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){
