@@ -11,20 +11,90 @@ public class CurvatureFilter
         return string.Join(", ", new List<T>(arr).ConvertAll(j => j.ToString()));
     }
 
-    public CurvatureFilter(Mesh mesh, List<List<int>> neighboors, Vector3[] principalDirections, float[] ratios)
+    public CurvatureFilter(Mesh mesh, List<List<int>> neighboors, Vector3[] principalDirections, float[] ratios, float reliabilityRatio=0.5f)
     {
         _mesh = mesh;
         _neighboors = neighboors;
         _principalDirections = principalDirections;
         _ratios = ratios;
+        minRatio = reliabilityRatio;
 
         _theta = new double[mesh.vertexCount];
         _ti = new Vector3[mesh.vertexCount];
         
-        //Debug.Log("Initial Energy: " + EnergyFunction(test_theta).ToString());
-        //Debug.Log("Derivatives: " + showArray(EnergyGradient(test_theta)));
-        //Debug.Log("Current Curvatures: " + showArray(_principalDirections));
+    }
+
+    private static Mesh _mesh;
+    private static List<List<int>> _neighboors;
+    private Vector3[] _principalDirections;
+    private float[] _ratios;
+    private static bool[] _directionIsReliable;
+    private float minRatio;
+
+    private double[] _theta;
+    private double[] _solutionTheta;
+    private Vector3[] _ti;
+    private static Dictionary<(int x, int y), double> _phi = new Dictionary<(int x, int y), double>();
+
+    private void GetReliability()
+    {
+        _directionIsReliable = new bool[_mesh.vertices.Length];
+        for (int i = 0; i < _mesh.vertices.Length; i++) _directionIsReliable[i] = Mathf.Abs(_ratios[i]) < minRatio;
+        Debug.Log(showArray(_ratios));
+        Debug.Log(showArray(_directionIsReliable));
+    }
+
+    Func<double[], double> EnergyFunction = delegate(double[] theta){
+        double result = 0;
+        for(int i=0; i< _mesh.vertexCount; i++){
+            if (_directionIsReliable[i]) continue;
+            List<int> neighboors = _neighboors[i];
+            for(int j=0; j<neighboors.Count; j++){
+                int _j = _mesh.triangles[neighboors[j]];
+                result -= Math.Cos(4 * ((theta[i]-_phi[(i, _j)]) - (theta[_j]-_phi[(_j, i)])));
+            }
+        }
+        return result;
+    };
+
+    Func<double[], double[]> EnergyGradient = delegate(double[] theta){
+        double[] result = new double[theta.Length];        
+        for(int i=0; i< _mesh.vertexCount; i++){
+            if (_directionIsReliable[i]) continue;
+            List<int> neighboors = _neighboors[i];
+                for(int j=0; j<neighboors.Count; j++){
+                    int _j = _mesh.triangles[neighboors[j]];
+                    result[i] -= -4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
+                    result[_j] -= 4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
+                }
+        }
+        return result;
+    };
+
+    public void TestEnergyResults(int results=30)
+    {
+        ComputePhiTheta();
+        GetReliability();
+        double[] Energies = new double[results];
+        float increment = Mathf.PI / 30;
+
+        double[] theta = (double[]) _theta.Clone();
+        for (int i = 0; i < results; i++)
+        {
+            theta[0] += increment;
+            Energies[i] = EnergyFunction(theta);
+        }
         
+        Debug.Log("Thetas: " + showArray(_theta));
+        Debug.Log("Energies: " + showArray(Energies));
+        Debug.Log("Increment per step: " + increment.ToString());
+        
+    }
+
+    public Vector3[] MinimizeEnergy(){
+        Debug.Log("Start Minimization.");
+        ComputePhiTheta();
+        GetReliability();
         /*
         double EPS = 1e-5;	
         double[] gradient = EnergyGradient(_theta);
@@ -44,48 +114,7 @@ public class CurvatureFilter
         }	
         Debug.Log("NUMERICAL GRADIENT " + showArray(numericalGradient));
         */
-    }
-
-    private static Mesh _mesh;
-    private static List<List<int>> _neighboors;
-    private Vector3[] _principalDirections;
-    private float[] _ratios;
-
-    private double[] _theta;
-    private double[] _solutionTheta;
-    private Vector3[] _ti;
-    private static Dictionary<(int x, int y), double> _phi = new Dictionary<(int x, int y), double>();
-
-    Func<double[], double> EnergyFunction = delegate(double[] theta){
-        double result = 0;
-        for(int i=0; i< _mesh.vertexCount; i++){
-            List<int> neighboors = _neighboors[i];
-            for(int j=0; j<neighboors.Count; j++){
-                int _j = _mesh.triangles[neighboors[j]];
-                //if (!_phi.ContainsKey((i, _j))) Debug.Log("Phi does not contain " + (i, _j).ToString());
-                //else if (!_phi.ContainsKey((_j, i))) Debug.Log("!Phi does not contain " + (_j, i).ToString());
-                result -= Math.Cos(4 * ((theta[i]-_phi[(i, _j)]) - (theta[_j]-_phi[(_j, i)])));
-            }
-        }
-        return result;
-    };
-
-    Func<double[], double[]> EnergyGradient = delegate(double[] theta){
-        double[] result = new double[theta.Length];        
-        for(int i=0; i< _mesh.vertexCount; i++){
-            List<int> neighboors = _neighboors[i];
-                for(int j=0; j<neighboors.Count; j++){
-                    int _j = _mesh.triangles[neighboors[j]];
-                    result[i] -= -4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
-                    result[_j] -= 4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
-                }
-        }
-        return result;
-    };
-
-    public Vector3[] MinimizeEnergy(){
-        Debug.Log("Start Minimization.");
-        ComputePhiTheta();
+        
         var lbfgs = new BroydenFletcherGoldfarbShanno(numberOfVariables: _theta.Length,
                                                       function: EnergyFunction, gradient: EnergyGradient);
         double success = lbfgs.Minimize(_theta);
@@ -132,7 +161,7 @@ public class CurvatureFilter
 
     public Vector3[] AlignDirections()
     {
-        Debug.Log("Aligned curvatures");
+        Debug.Log("Aligning curvatures");
         Debug.Log("Starting with" + showArray(_principalDirections));
         
         int[] triangles = _mesh.triangles;

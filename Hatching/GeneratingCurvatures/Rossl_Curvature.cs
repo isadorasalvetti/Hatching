@@ -45,7 +45,7 @@ public class RosslCurvature {
     public float[] GetCurvatureRatio() {
         if(k1 != null){
             float[] ratios = new float [_mesh.vertexCount];
-            for(int i = 0; i < ratios.Length; i++ ) ratios[i] = k2[i] / k1[i];
+            for(int i = 0; i < ratios.Length; i++ ) ratios[i] = k1[i] / k2[i]; //Minor / Major
             return ratios;
         }
         Debug.Log("Curvature information has not been computed"); return new float[0];

@@ -5,8 +5,9 @@ using UnityEngine;
 [CustomEditor(typeof(GetCurvatures))]
 public class ObjectBuilderEditor : Editor
 {
-    int brightness;
-    void GuiLine( int i_height = 1 )
+    public float reliabilityRatio = 0.5f;
+    
+    void GUILine( int i_height = 1 )
    {
        Rect rect = EditorGUILayout.GetControlRect(false, i_height );
        rect.height = i_height;
@@ -18,7 +19,11 @@ public class ObjectBuilderEditor : Editor
         DrawDefaultInspector();
         GetCurvatures myScript = (GetCurvatures)target;
         if(GUILayout.Button("Compute Curvatures (Rossl)")) myScript.ComputeCurvatureRossl();
-        if(GUILayout.Button("Optimize Current Directions")) myScript.OptimizePrincipalDirections();
-        if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
+        else if(GUILayout.Button("Optimize Current Directions")) myScript.OptimizePrincipalDirections(reliabilityRatio);
+        if(GUILayout.Button("Align Current Directions")) myScript.AlignCurvatures();
+        else if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
+        GUILine();
+        if(GUILayout.Button("Get optimization test values")) myScript.TestCurvatureOptimization();
+        
     }
 }
