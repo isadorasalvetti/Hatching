@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using Hatching.GeneratingCurvatures;
 using UnityEngine;
 
 public class GetCurvatures : MonoBehaviour
@@ -11,6 +10,7 @@ public class GetCurvatures : MonoBehaviour
     private List<List<int>>[] _mapFromNew;
     private Mesh[] _smoothMesh;
     private List<Vector3[]> _principalDirections;
+    private List<bool[]> _curvatureReliability; 
 
     //Principal Directions
     private RosslCurvature[] _rosslCrv;
@@ -31,7 +31,7 @@ public class GetCurvatures : MonoBehaviour
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
             allSmoothMeshes[m]= GetSmoothMesh(mesh, out allMapsFromNew[m]);
-            }
+        }
     }
 
     public void ComputeCurvatureRossl(){
@@ -53,6 +53,13 @@ public class GetCurvatures : MonoBehaviour
         InitializeFilter();
         for (int m = 0; m < _meshes.Length; m++) _principalDirections[m] = _filter[m].AlignDirections();
     }
+    
+    public void OptimizePrincipalDirections()
+    {
+        InitializeFilter();
+        for (int m = 0; m < _meshes.Length; m++) _principalDirections[m] = _filter[m].MinimizeEnergy();
+        ApplyPrincipalDirectios();
+    }
 
     private void InitializeFilter(){
         _filter = new CurvatureFilter[_meshes.Length];
@@ -63,6 +70,7 @@ public class GetCurvatures : MonoBehaviour
     }
 
     public void ApplyPrincipalDirectios(){
+        Debug.Log("Applied principal directions as colors");
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
             Color[] newColors = new Color[mesh.vertices.Length];
@@ -74,7 +82,7 @@ public class GetCurvatures : MonoBehaviour
                     displacement += j;
                     newColors[_mapFromNew[m][i][j]] = curvatureColors[i];
                 }
-            mesh.colors = newColors;
+                mesh.colors = newColors;
             }
         }
     }
@@ -129,8 +137,8 @@ public class GetCurvatures : MonoBehaviour
 
     float MaxCurvature(float[] curv){
         float max = 0;
-        for (int i=0; i<curv.Length; i++){
-            if (curv[i]>max) max = curv[i];
+        foreach (var t in curv){
+            if (t>max) max = t;
         }
         return max;
     }

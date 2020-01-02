@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Custom.Singleton;
 using Hatching;
 using UnityEngine;
 
@@ -19,8 +20,7 @@ public class CurvatureFilter
 
         _theta = new double[mesh.vertexCount];
         _ti = new Vector3[mesh.vertexCount];
-
-        ComputePhiTheta();
+        
         //Debug.Log("Initial Energy: " + EnergyFunction(test_theta).ToString());
         //Debug.Log("Derivatives: " + showArray(EnergyGradient(test_theta)));
         //Debug.Log("Current Curvatures: " + showArray(_principalDirections));
@@ -83,14 +83,16 @@ public class CurvatureFilter
         return result;
     };
 
-    public void MinimizeEnergy(){
+    public Vector3[] MinimizeEnergy(){
+        Debug.Log("Start Minimization.");
+        ComputePhiTheta();
         var lbfgs = new BroydenFletcherGoldfarbShanno(numberOfVariables: _theta.Length,
                                                       function: EnergyFunction, gradient: EnergyGradient);
         double success = lbfgs.Minimize(_theta);
         _solutionTheta = lbfgs.Solution;
         Debug.Log("Initial Energy: " + EnergyFunction(_theta).ToString());
         Debug.Log("Optimal Energy: " + EnergyFunction(_solutionTheta).ToString());
-        Debug.Log("Thetas: " + string.Join(", ", new List<double>(_solutionTheta).ConvertAll(j => j.ToString())));
+        return getNewVectors();
     }
 
     public Vector3[] getNewVectors(){
@@ -124,58 +126,58 @@ public class CurvatureFilter
                 else _phi[(i, _j)] = Mathf.Acos(dot);
             }
         }
-        Debug.Log("Thetas: " + string.Join(", ", new List<double>(_theta).ConvertAll(j => j.ToString())));
-        Debug.Log("Phis: " + string.Join(", ", new List<double>(_phi.Values).ConvertAll(j => j.ToString())));  
+        //Debug.Log("Thetas: " + string.Join(", ", new List<double>(_theta).ConvertAll(j => j.ToString())));
+        //Debug.Log("Phis: " + string.Join(", ", new List<double>(_phi.Values).ConvertAll(j => j.ToString())));  
     }
 
     public Vector3[] AlignDirections()
     {
+        Debug.Log("Aligned curvatures");
+        Debug.Log("Starting with" + showArray(_principalDirections));
+        
         int[] triangles = _mesh.triangles;
-        bool[] frozen_triangles = new bool[_mesh.vertices.Length];
+        bool[] frozenTriangles = new bool[_mesh.vertices.Length];
         Vector3[] normals = _mesh.normals;
         
         // Pool of triangles to evaluate next
-        List<int> triangle_pool = new List<int>();
-        triangle_pool.Add(0);
+        List<int> trianglePool = new List<int>();
+        trianglePool.Add(0);
 
         for(int count=0; count < 100000; count++)
         {
             //Stop if there are no availabl triangles
-            if (triangle_pool.Count < 1) break;
+            if (trianglePool.Count < 1) break;
 
             //Get next triangle to evaluate and its vertices
-            int current_triangle = triangle_pool[0];
-            triangle_pool.RemoveAt(0);
+            int currentTriangle = trianglePool[0];
+            trianglePool.RemoveAt(0);
 
-            int tria = triangles[current_triangle*3+0];
-            int trib = triangles[current_triangle*3+1];
-            int tric = triangles[current_triangle*3+2];
+            int tria = triangles[currentTriangle*3+0];
+            int trib = triangles[currentTriangle*3+1];
+            int tric = triangles[currentTriangle*3+2];
 
             // Skip if all triangle vertices are frozen
-            if (frozen_triangles[tria] && frozen_triangles[trib] && frozen_triangles[tric]) continue;
+            if (frozenTriangles[tria] && frozenTriangles[trib] && frozenTriangles[tric]) continue;
             
             float maxConsistency = -3;
             var maxConsistencyCoef = (0, 0, 0);
             
             //Find maximun consisntency
-            for (int k =-1; k < 2; k+=2)
-                for (int l =-1; l < 2; l+=2)
+            for (int k = -1; k < 2; k+=2)
+                for (int l = -1; l < 2; l+=2)
                     for (int m = -1; m < 2; m+=2)
                     {
                         // Do not flip principal directions for frozen vertices
-                        if(k < 0 && frozen_triangles[tria]) continue;
-                        if(l < 0 && frozen_triangles[trib]) continue;
-                        if(m < 0 && frozen_triangles[tric]) continue;
+                        if(k == -1 && frozenTriangles[tria]) continue;
+                        if(l == -1 && frozenTriangles[trib]) continue;
+                        if(m == -1 && frozenTriangles[tric]) continue;
 
                         Vector3 Di = k*projectVector(_principalDirections[tria], normals[tria]);
-                        Vector3 Dj = l*projectVector(_principalDirections[trib], normals[tria]);
-                        Vector3 Dk = m*projectVector(_principalDirections[tric], normals[tria]);
-                        float my_consistency = Vector3.Dot(Di, Dj) + Vector3.Dot(Dj, Dk) + Vector3.Dot(Dk, Di);
-                        // Debug.Log("Index:" + k.ToString() + l.ToString() + m.ToString() + " Consitency:" + my_consistency);
-                        // Debug.Log("Vertices:" + Di.ToString() + Dj.ToString() + Dk.ToString());
+                        Vector3 Dj = l*projectVector(_principalDirections[trib], normals[trib]);
+                        Vector3 Dk = m*projectVector(_principalDirections[tric], normals[tric]);
                         
-                        if (my_consistency > maxConsistency)
-                        {
+                        float my_consistency = Vector3.Dot(Di, Dj) + Vector3.Dot(Dj, Dk) + Vector3.Dot(Dk, Di);
+                        if (my_consistency > maxConsistency) {
                             maxConsistency = my_consistency;
                             maxConsistencyCoef = (k, l, m);
                         }
@@ -191,18 +193,19 @@ public class CurvatureFilter
             _principalDirections[trib] = indb*_principalDirections[trib];
             _principalDirections[tric] = indc*_principalDirections[tric];
 
-            frozen_triangles[tria] = true;
-            frozen_triangles[trib] = true;
-            frozen_triangles[tric] = true;
+            frozenTriangles[tria] = true;
+            frozenTriangles[trib] = true;
+            frozenTriangles[tric] = true;
 
             //Add new triangles
             for (int i = 0; i<3; i++){
-                foreach (int id in _neighboors[triangles[current_triangle*3+i]]){
+                foreach (int id in _neighboors[triangles[currentTriangle*3+i]]){
                     int tri_id = id/3;
-                    if(!triangle_pool.Contains(tri_id)) triangle_pool.Add(tri_id);
+                    if(!trianglePool.Contains(tri_id)) trianglePool.Add(tri_id);
                 }
             }
         }
+        Debug.Log("Finishing with" + showArray(_principalDirections));
         return _principalDirections;
     }
 

@@ -96,7 +96,6 @@ public class ProcessHatching
             Color pixelColor = _texture.GetPixel(u, -v);
             if (!isInvalidColor(new Vector2(u, v)))
             {
-                Vector2 point = new Vector2(u, v);
                 Vector2 direction = rg(pixelColor);
                 float depth = pixelColor.b;
                 
