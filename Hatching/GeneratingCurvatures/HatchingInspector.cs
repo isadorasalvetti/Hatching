@@ -23,7 +23,7 @@ public class ObjectBuilderEditor : Editor
         if(GUILayout.Button("Align Current Directions")) myScript.AlignCurvatures();
         else if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
         GUILine();
-        if(GUILayout.Button("Get optimization test values")) myScript.TestCurvatureOptimization();
+        if(GUILayout.Button("Get optimization test values")) myScript.TestCurvatureOptimization(reliabilityRatio);
         
     }
 }

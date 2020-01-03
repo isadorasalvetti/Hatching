@@ -9,20 +9,42 @@ public class GetCurvatures : MonoBehaviour
     //Smooth Mesh
     private List<List<int>>[] _mapFromNew;
     private Mesh[] _smoothMesh;
-    private List<Vector3[]> _principalDirections;
-    private List<bool[]> _curvatureReliability; 
 
     //Principal Directions
-    private RosslCurvature[] _rosslCrv;
-    private CurvatureFilter[] _filter;
+    private CurvatureData[] _curvatureDatas;
+    private MeshInfo[] _meshInfos;
 
 
-    private void Initialize(){
-        _meshes = GetComponentsInChildren<MeshFilter>();
-        GetAllSmoothMeshes(out _smoothMesh, out _mapFromNew);
+    private bool Initialize()
+    {
+        bool returnFalse = false;
+        if (_meshes == null) {
+            _meshes = GetComponentsInChildren<MeshFilter>();
+            returnFalse = true;
+        }
+        if (_smoothMesh == null || _mapFromNew == null) {
+            GetAllSmoothMeshes(out _smoothMesh, out _mapFromNew);
+            returnFalse = true;
+        }
+        
+        if (_curvatureDatas == null) {
+            _curvatureDatas = new CurvatureData[_meshes.Length];
+            for (int i = 0; i < _meshes.Length; i++) {
+                int vertCount = _smoothMesh[i].vertexCount;
+                _curvatureDatas[i] = new CurvatureData(vertCount);
+            }
+            returnFalse = true;
+        }
+        if (_meshInfos == null){
+            _meshInfos = new MeshInfo[_meshes.Length];
+            for (int i = 0; i < _meshes.Length; i++) {
+                _meshInfos[i] = new MeshInfo(_smoothMesh[i]);
+            }
+            returnFalse = true;
+        }
 
-        _rosslCrv =  new RosslCurvature[_meshes.Length];
-        _principalDirections = new List<Vector3[]>();
+        if (returnFalse) return false;
+        return true;
     }
 
     private void GetAllSmoothMeshes(out Mesh[] allSmoothMeshes, out List<List<int>>[] allMapsFromNew){
@@ -37,40 +59,63 @@ public class GetCurvatures : MonoBehaviour
     public void ComputeCurvatureRossl(){
         Initialize();
         for (int m = 0; m < _meshes.Length; m++){
-            Mesh smoothMesh = _smoothMesh[m];
-            
-            _rosslCrv[m] = new RosslCurvature(smoothMesh);
-            _rosslCrv[m].ComputeCurvature();
-
-            _principalDirections.Add(_rosslCrv[m].GetPrincipalDirections());
+            RosslCurvature.ComputeCurvature(ref _meshInfos[m], out _curvatureDatas[m]);
         }
         ApplyPrincipalDirectios();
     }
 
     public void AlignCurvatures(){
-        InitializeFilter();
-        for (int m = 0; m < _meshes.Length; m++) _principalDirections[m] = _filter[m].AlignDirections();
+        if (!Initialize() || _meshInfos[0].principalDirections.Length < 1) {
+            Debug.Log("Curvatures not computed");
+            return;
+        }
+
+        for (int m = 0; m < _meshInfos.Length; m++){
+            MeshInfo meshInfo = _meshInfos[m];
+            if (meshInfo.principalDirections.Length < 1){
+                Debug.Log("Principal directions not computed");
+                return;
+            }
+            _meshInfos[m].principalDirections = CurvatureFilter.AlignDirections(_meshInfos[m]);
+        }
         ApplyPrincipalDirectios();
     }
     
     public void OptimizePrincipalDirections(float reliabilityRatio)
     {
-        InitializeFilter(reliabilityRatio);
-        for (int m = 0; m < _meshes.Length; m++) _principalDirections[m] = _filter[m].MinimizeEnergy();
+        if (!Initialize() || _meshInfos[0].principalDirections.Length < 1) {
+            Debug.Log("Curvatures not computed");
+            return;
+        }
+        
+        for (int m=0; m < _meshInfos.Length; m++) {
+            MeshInfo meshInfo = _meshInfos[m];
+            if (meshInfo.principalDirections.Length < 1) {
+                Debug.Log("Principal directions not computed");
+                return;
+            }
+            bool[] curvatureReliability = CurvatureFilter.GetReliability(meshInfo.curvatureRatios, reliabilityRatio);
+            meshInfo.principalDirections = CurvatureFilter.MinimizeEnergy(meshInfo, curvatureReliability);
+        }
         ApplyPrincipalDirectios();
     }
+    
 
-    private void InitializeFilter(float reliabilityRatio=0.5f){
-        _filter = new CurvatureFilter[_meshes.Length];
-            for (int m = 0; m < _meshes.Length; m++){
-                _filter[m] = new CurvatureFilter(_smoothMesh[m], _rosslCrv[m].GetVertexNeighboors(),
-                                                _principalDirections[m], _rosslCrv[m].GetCurvatureRatio(), reliabilityRatio);
+    public void TestCurvatureOptimization(float reliabilityRatio){
+        if (!Initialize()) {
+            Debug.Log("Curvatures not computed");
+            return;
         }
-    }
-
-    public void TestCurvatureOptimization(){
-        Debug.Log("Curvatures / Principal Directions must have been computed.");
-        _filter[0].TestEnergyResults();
+        
+        for (int m=0; m < _meshInfos.Length; m++) {
+            MeshInfo meshInfo = _meshInfos[m];
+            if (meshInfo.principalDirections.Length < 1) {
+                Debug.Log("Principal directions not computed");
+                return;
+            }
+            bool[] curvatureRatio = CurvatureFilter.GetReliability(meshInfo.curvatureRatios, reliabilityRatio);
+            CurvatureFilter.TestEnergyResults(meshInfo, curvatureRatio);
+        }
     }
 
     public void ApplyPrincipalDirectios(){
@@ -78,7 +123,7 @@ public class GetCurvatures : MonoBehaviour
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
             Color[] newColors = new Color[mesh.vertices.Length];
-            Color[] curvatureColors = Array.ConvertAll(_principalDirections[m], j => new Color(j.x, j.y, j.z, 1));
+            Color[] curvatureColors = Array.ConvertAll(_meshInfos[m].principalDirections, j => new Color(j.x, j.y, j.z, 1));
 
             int displacement = 0;
             for (int i = 0; i < curvatureColors.Length; i++){

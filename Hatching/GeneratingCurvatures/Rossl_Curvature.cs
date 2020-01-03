@@ -7,23 +7,7 @@ using MathNet.Numerics.LinearAlgebra.Single;
 using UnityEngine;
 using Complex = System.Numerics.Complex;
 
-public class RosslCurvature {
-
-    public RosslCurvature(Mesh mesh){
-        _mesh = mesh;
-        _vertexNeighboors = new List<List<int>>();
-    }
-
-    private List<List<int>> _vertexNeighboors;
-    private int[] _cornerTable;
-    private Mesh _mesh;
-
-    float [] k1; //minor
-    float [] k2; //major
-    Vector<float> [] d1;
-    Vector<float> [] d2;
-    Vector3[] _principalDirections;
-
+public static class RosslCurvature {
     static int Next(int corner) {
         return 3 * (corner / 3) + (corner + 1) % 3;
     }
@@ -32,60 +16,47 @@ public class RosslCurvature {
         return 3 * (corner / 3) + (corner + 2) % 3;
     }
 
-    public List<List<int>> GetVertexNeighboors() {
-        if(_vertexNeighboors != null) return _vertexNeighboors;
-        Debug.Log("Curvature information has not been computed"); return new List<List<int>>();
-    }
-
-    public Vector3[] GetPrincipalDirections() {
-        if(_principalDirections != null) return _principalDirections;
-        Debug.Log("Curvature information has not been computed"); return new Vector3[0];
-    }
-
-    public float[] GetCurvatureRatio() {
+    public static float[] ComputeCurvatureRatio(float[] k1, float[] k2) {
         if(k1 != null){
-            float[] ratios = new float [_mesh.vertexCount];
+            float[] ratios = new float [k1.Length];
             for(int i = 0; i < ratios.Length; i++ ) ratios[i] = k1[i] / k2[i]; //Minor / Major
             return ratios;
         }
         Debug.Log("Curvature information has not been computed"); return new float[0];
     }
 
-    public void ComputeCurvature(){
-        int n = _mesh.vertexCount;
-        k1 = new float[n];
-        k2 = new float[n];
-        _principalDirections = new Vector3[n];
-        d1 = new Vector<float>[n];
-        d2 = new Vector<float>[n];
+    public static void ComputeCurvature(ref MeshInfo meshInfo, out CurvatureData outData){
+        int n = meshInfo.vertexCount;
+        outData = new CurvatureData(n);
 
-        BuildCornerTable();
+        int[] cornerTable = BuildCornerTable(meshInfo.mesh);
         
-        for (int i = 0; i < _mesh.vertices.Length; i++){
-            List<int> neighboors = GetOrderedNeighboors(i);
-            _vertexNeighboors.Add(neighboors);
+        for (int i = 0; i < n; i++){
+            List<int> neighboors = GetOrderedNeighboors(meshInfo.mesh, i, cornerTable);
+            meshInfo.neighboohood.Add(neighboors);
             float[] r, phi;
             Matrix<float> F;
-            MakeExponentialMap(i, neighboors, out r, out phi);
-            GetUVF(r, phi, neighboors.ToArray(), i, out F);
-            GetCurvatures(F, out k1[i], out k2[i], out d1[i], out d2[i]);
-            _principalDirections[i] = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), d1[i][0], d1[i][1]);
-            //Debug.Log(i.ToString() + ": " + curvatures[i]);
+            MakeExponentialMap(meshInfo.mesh, i, neighboors, out r, out phi);
+            GetUVF(meshInfo.mesh, r, phi, neighboors.ToArray(), i, out F);
+            GetCurvatures(F, i, ref outData);
+            meshInfo.principalDirections[i] = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), outData.d1[i][0], outData.d1[i][1]);
         }
+
+        meshInfo.curvatureRatios = ComputeCurvatureRatio(outData.k1, outData.k2);
     }
 
-    Vector3 vectorToUnity(Vector<float> v){
+    static Vector3 vectorToUnity(Vector<float> v){
         return new Vector3(v[0], v[1], v[2]);
     }
 
-    void BuildCornerTable(){
-        List<int[]> cornerEdges = new List<int[]>(new int[_mesh.triangles.Length][]);
-        _cornerTable = new int[_mesh.triangles.Length];
+    static int[] BuildCornerTable(Mesh mesh){
+        List<int[]> cornerEdges = new List<int[]>(new int[mesh.triangles.Length][]);
+        int[] cornerTable = new int[mesh.triangles.Length];
 
         //Debug.Log("Number of vertices = " + _mesh.vertices.Length.ToString() + ", Number of faces = " + _mesh.triangles.Length.ToString());
 
-        for (int i = 0; i < _mesh.triangles.Length/3; i++){
-            int[] vector = new int[3] {_mesh.triangles[i*3+0], _mesh.triangles[i*3+1], _mesh.triangles[i*3+2]};
+        for (int i = 0; i < mesh.triangles.Length/3; i++){
+            int[] vector = new int[3] {mesh.triangles[i*3+0], mesh.triangles[i*3+1], mesh.triangles[i*3+2]};
             int[] edge0 = new int[2] {Mathf.Min(vector[1], vector[2]), Mathf.Max(vector[1], vector[2])}; // 0
             int[] edge1 = new int[2] {Mathf.Min(vector[0], vector[2]), Mathf.Max(vector[0], vector[2])}; // 1
             int[] edge2 = new int[2] {Mathf.Min(vector[0], vector[1]), Mathf.Max(vector[0], vector[1])}; // 2
@@ -97,29 +68,31 @@ public class RosslCurvature {
         
         for (int i = 0; i < cornerEdges.Count; i++){
             int[] e1 = cornerEdges[i];
-            _cornerTable[i] = -1;
+            cornerTable[i] = -1;
             for (int j = 0; j < cornerEdges.Count; j++){
                 int[] e2 = cornerEdges[j];
                 if (i!=j && e1[0] == e2[0] && e1[1] == e2[1]){
-                    _cornerTable[i] = j;
-                    _cornerTable[j] = i;
+                    cornerTable[i] = j;
+                    cornerTable[j] = i;
                     break;
                 }
             }
         }
+
+        return cornerTable;
         //Debug.Log("Corner Table = " + string.Join(", ", new List<int>(_cornerTable).ConvertAll(j => j.ToString()).ToArray()));
     }
 
-    List<int> GetOrderedNeighboors(int vert){
+    static List<int> GetOrderedNeighboors(Mesh mesh, int vert, int[] cornerTable){
         List<int> vertexNeighboors = new List<int>();
         List<int> temp = new List<int>();
 
-        int firstCorner = Next(_mesh.triangles.ToList().IndexOf(vert));
+        int firstCorner = Next(mesh.triangles.ToList().IndexOf(vert));
         vertexNeighboors.Add(firstCorner);
         int nextCorner = firstCorner;
-        for (int i = 0; i < _mesh.triangles.Length/3; i++)
+        for (int i = 0; i < mesh.triangles.Length/3; i++)
         {
-            nextCorner = _cornerTable[Next(nextCorner)];
+            nextCorner = cornerTable[Next(nextCorner)];
             if (nextCorner == firstCorner) break;
             if (nextCorner > -1) vertexNeighboors.Add(nextCorner);
             else{ //needs fix, remove vertex
@@ -129,21 +102,21 @@ public class RosslCurvature {
         return vertexNeighboors;
     }
 
-    void MakeExponentialMap(int vert, List<int> neighboors, out float[] r, out float[] phi){
+    static void MakeExponentialMap(Mesh mesh, int vert, List<int> neighboors, out float[] r, out float[] phi){
         // Move vertices such that v = (0, 0, 0)
-        Vector3 v0 = _mesh.vertices[vert];
+        Vector3 v0 = mesh.vertices[vert];
         Vector3[] vn = new Vector3[neighboors.Count];
         r = new float[neighboors.Count];
         phi = new float[neighboors.Count];
 
         // First neighboor - begining of the polar coordinates
-        vn[0] = _mesh.vertices[_mesh.triangles[neighboors[0]]] - v0;
+        vn[0] = mesh.vertices[mesh.triangles[neighboors[0]]] - v0;
         r[0] = vn[0].magnitude;
         phi[0] = 0;
 
         float accumulatedAngle = 0;
         for (int i = 1; i < neighboors.Count; i++){
-            vn[i] = _mesh.vertices[_mesh.triangles[neighboors[i]]] - v0;
+            vn[i] = mesh.vertices[mesh.triangles[neighboors[i]]] - v0;
             r[i] = vn[i].magnitude;
             accumulatedAngle += Mathf.Acos(Mathf.Clamp(Vector3.Dot(vn[i].normalized, vn[i-1].normalized), -1, 1));
             phi[i] = accumulatedAngle;
@@ -156,12 +129,12 @@ public class RosslCurvature {
         //Debug.Log("R: " + string.Join(", ", new List<float>(r).ConvertAll(j => j.ToString()).ToArray()));
     }
 
-    void GetUVF(float[] r, float[] phi, int[] neighbors, int v, out Matrix<float> F){
+    static void GetUVF(Mesh mesh, float[] r, float[] phi, int[] neighbors, int v, out Matrix<float> F){
         float[,] V = new float[r.Length, 5];
         float[,] Q = new float[r.Length, 3];
 
         for (int i = 0; i < r.Length; i++){
-            Vector3 vert = _mesh.vertices[_mesh.triangles[neighbors[i]]] - _mesh.vertices[v];
+            Vector3 vert = mesh.vertices[mesh.triangles[neighbors[i]]] - mesh.vertices[v];
             Q[i, 0] = vert.x;
             Q[i, 1] = vert.y;
             Q[i, 2] = vert.z;
@@ -182,7 +155,7 @@ public class RosslCurvature {
         F = GetF(Vm, Qm, r.Length);
     }
 
-    Matrix<float> GetF(Matrix<float> VM, Matrix<float> QM, int n){
+    static Matrix<float> GetF(Matrix<float> VM, Matrix<float> QM, int n){
         Matrix<float> F = DenseMatrix.OfArray(new float[1,n]);
         if(n==5) F = VM.Inverse()*QM;
         if(n<5) F = VM.Transpose()*(VM*VM.Transpose()).Inverse()*QM;
@@ -190,9 +163,9 @@ public class RosslCurvature {
         return F;
     }
 
-    void GetCurvatures(Matrix<float> F, out float k1, out float k2, out Vector<float> d1, out Vector<float> d2) { // F: Fu, Fv, Fuu, Fuv, Fvv
+    static void GetCurvatures(Matrix<float> F, int v, ref CurvatureData outData) { // F: Fu, Fv, Fuu, Fuv, Fvv
         //float lambda1, lambda2, k1, k2;
-        
+
         Vector3 Fu = new Vector3(F[0, 0], F[0, 1], F[0, 2]);
         Vector3 Fv = new Vector3(F[1, 0], F[1, 1], F[1, 2]);
         Vector3 Nu = Vector3.Cross(Fu, Fv).normalized;
@@ -211,28 +184,28 @@ public class RosslCurvature {
         Matrix<float> eigenVectors = eigen.EigenVectors;
         Vector<Complex> eigenValues = eigen.EigenValues;
         
-        d1 = eigenVectors.Row(0);
-        d2 = eigenVectors.Row(1);
-        k1 = (float)eigenValues.At(0).Real;
-        k2 = (float)eigenValues.At(1).Real;
+        outData.d1[v] = eigenVectors.Row(0);
+        outData.d2[v] = eigenVectors.Row(1);
+        outData.k1[v] = (float)eigenValues.At(0).Real;
+        outData.k2[v] = (float)eigenValues.At(1).Real;
         
-        if (Mathf.Abs(k1) < Mathf.Abs(k2)) return;
+        if (Mathf.Abs(outData.k1[v]) < Mathf.Abs(outData.k2[v])) return;
 
-        swap(ref k1, ref k2);
-        swap(ref d1, ref d2);
+        swap(ref outData.k1[v], ref outData.k2[v]);
+        swap(ref outData.d1[v], ref outData.d2[v]);
     }
 
-    void swap<T>(ref T a, ref T b){
+    static void swap<T>(ref T a, ref T b){
         T temp = a;
         a = b;
         b = temp;
     }
 
-    Vector3 ParametricTo3D(Vector3 Fu, Vector3 Fv, float u, float v) {
+    static Vector3 ParametricTo3D(Vector3 Fu, Vector3 Fv, float u, float v) {
         return (v * Fu.normalized + u * Fv.normalized).normalized;
     }
 
-    void ScalePhi(ref float[] phi, float maxAngle){
+    static void ScalePhi(ref float[] phi, float maxAngle){
         // Scales phi such that it sums to
         // Debug.Log(maxAngle);
         float correctionRatio = 2*Mathf.PI/maxAngle;
