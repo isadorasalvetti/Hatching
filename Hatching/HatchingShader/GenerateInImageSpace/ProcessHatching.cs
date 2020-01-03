@@ -36,6 +36,8 @@ public class ProcessHatching
         PointGrid = new List<Vector3>[(int)(_texture.width/(_dSeparation))+1, (int)(_texture.height/(_dSeparation))+1];
         int testX, testY; getGridCoords(_texture.width, _texture.height, out testX, out testY);
         
+        Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
+        
         StartRandomSeed();
         DrawHatchings();
     }
@@ -104,7 +106,7 @@ public class ProcessHatching
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
                 addPointToGrid(gridX, gridY, u, v, depth);
                 AddLine(new Vector2(u, v), direction);
-                break;
+                return;
             }
         }
     }
@@ -149,7 +151,7 @@ public class ProcessHatching
         //Creates new line starting at seed.
         List<Vector2> line = new List<Vector2>();
         foreach (int mult in new int[2]{1, -1}){
-            Vector2 direction = initialDirection*mult;
+            Vector2 direction = initialDirection;
             Vector2 newPoint = seed;
             for (int i = 0; i < 2000; i++)
             {
@@ -157,11 +159,12 @@ public class ProcessHatching
 
                 if (mult > 0) line.Add(newPoint);
                 else line.Insert(0, newPoint);
+                direction *= mult;
                 newPoint = GetNextPoint(newPoint, ref direction);
             }
         }
         if(line.Count > 2) Lines.Add(line);
-        //GetNextSeed(line);
+        GetNextSeed(line);
     }
 
     Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction)
@@ -187,8 +190,9 @@ public class ProcessHatching
         }
         addPointToGrid(gridX, gridY, newPoint3);
 
-        Vector2 newDirection = rg(pixelColor);
-        newDirection = newDirection * 2 - Vector2.one;
+        direction = rg(pixelColor);
+        direction = direction * 2 - Vector2.one;
+        
         return newPoint;
     }
 
@@ -207,7 +211,7 @@ public class ProcessHatching
                 lastPointFound = pointToCheck;
             }
         }
-        Debug.Log(string.Format("Intermediary point found: {0}, between {1} and {2}", lastPointFound, first, second));
+        //Debug.Log(string.Format("Intermediary point found: {0}, between {1} and {2}", lastPointFound, first, second));
         //Debug.Log(string.Format("Point color: {0}", _texture.GetPixel((int)lastPointFound.x, -(int)lastPointFound.y)));
         return lastPointFound;
     }
@@ -228,13 +232,13 @@ public class ProcessHatching
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
                 //Debug.Log("Line: " + string.Join(", ",
                 //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(colors[k], 1, pointFline));
+                bitmap.Mutate(x => x.DrawLines(colors[k], 2, pointFline));
             }
             k=(k+1)%5;
         }
 
-        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
-        bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
+        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
+        //bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
     }
 
     Vector2 rg(Color color)

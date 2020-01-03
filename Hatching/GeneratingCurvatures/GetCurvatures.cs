@@ -8,42 +8,31 @@ public class GetCurvatures : MonoBehaviour
 
     //Smooth Mesh
     private List<List<int>>[] _mapFromNew;
-    private Mesh[] _smoothMesh;
 
     //Principal Directions
     private CurvatureData[] _curvatureDatas;
     private MeshInfo[] _meshInfos;
 
 
-    private bool Initialize()
-    {
+    private bool Initialize(){
         bool returnFalse = false;
         if (_meshes == null) {
             _meshes = GetComponentsInChildren<MeshFilter>();
             returnFalse = true;
         }
-        if (_smoothMesh == null || _mapFromNew == null) {
-            GetAllSmoothMeshes(out _smoothMesh, out _mapFromNew);
-            returnFalse = true;
-        }
-        
-        if (_curvatureDatas == null) {
-            _curvatureDatas = new CurvatureData[_meshes.Length];
+        if (_meshInfos == null) {
+            Mesh[] smoothMesh;
+            GetAllSmoothMeshes(out smoothMesh, out _mapFromNew);
+            _meshInfos = new MeshInfo[smoothMesh.Length]; 
+            _curvatureDatas = new CurvatureData[smoothMesh.Length];
             for (int i = 0; i < _meshes.Length; i++) {
-                int vertCount = _smoothMesh[i].vertexCount;
-                _curvatureDatas[i] = new CurvatureData(vertCount);
-            }
-            returnFalse = true;
-        }
-        if (_meshInfos == null){
-            _meshInfos = new MeshInfo[_meshes.Length];
-            for (int i = 0; i < _meshes.Length; i++) {
-                _meshInfos[i] = new MeshInfo(_smoothMesh[i]);
+                _meshInfos[i] = new MeshInfo(smoothMesh[i]);
+                _curvatureDatas[i] = new CurvatureData(smoothMesh[i].vertexCount);
             }
             returnFalse = true;
         }
 
-        if (returnFalse) return false;
+        if(returnFalse) return false;
         return true;
     }
 
@@ -65,7 +54,7 @@ public class GetCurvatures : MonoBehaviour
     }
 
     public void AlignCurvatures(){
-        if (!Initialize() || _meshInfos[0].principalDirections.Length < 1) {
+        if (!Initialize() || _meshInfos[0].principalDirections == null) {
             Debug.Log("Curvatures not computed");
             return;
         }
@@ -83,7 +72,7 @@ public class GetCurvatures : MonoBehaviour
     
     public void OptimizePrincipalDirections(float reliabilityRatio)
     {
-        if (!Initialize() || _meshInfos[0].principalDirections.Length < 1) {
+        if (!Initialize() || _meshInfos[0].principalDirections == null) {
             Debug.Log("Curvatures not computed");
             return;
         }
@@ -102,7 +91,7 @@ public class GetCurvatures : MonoBehaviour
     
 
     public void TestCurvatureOptimization(float reliabilityRatio){
-        if (!Initialize()) {
+        if (!Initialize() || _meshInfos[0].principalDirections == null) {
             Debug.Log("Curvatures not computed");
             return;
         }

@@ -45,9 +45,9 @@
 
             fixed4 frag (v2f i) : SV_Target
             {
-                fixed3 curv_direction = normalize(i.color.xyz/i.color.w);
-                fixed4 col = fixed4((normalize(curv_direction) + 1)/2, 1);
-                return col;
+                fixed2 curv_direction = normalize(i.color.xy/i.color.w);
+                fixed4 col = fixed4(curv_direction*0.5 + 0.5, 0, 1);
+                return fixed4(col.x, col.x, col.x, col.x);
             }
             ENDCG
         }
