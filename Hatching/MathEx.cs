@@ -28,7 +28,14 @@ public class Math2
 
     public static float radToDegree(float rad) { return rad * (180.0f / PI); }
 
-    public static float aTb(Vector3 a, Vector3 b) { return a.x * b.x + a.y * b.y + a.z * a.y; }
+    public static Vector2 rotateVec2 (Vector2 vector, float angle)
+    {
+        // Rotates vector by angle (radiands)
+        Vector2 result = new Vector2();
+        result.x = vector.x * Mathf.Cos(angle) - vector.y * Mathf.Sin(angle);
+        result.y = vector.x * Mathf.Sin(angle) + vector.y * Mathf.Cos(angle);
+        return result;
+    }
 
 }
 

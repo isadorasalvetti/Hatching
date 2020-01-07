@@ -27,6 +27,12 @@ public class CurvatureFilter
         _theta = new double[info.vertexCount];
         _ti = new Vector3[info.vertexCount];
         _directionIsReliable = directionIsRealiable;
+
+        int vertices = 0;
+        foreach(bool reliability in _directionIsReliable)
+            if (!reliability)
+                vertices += 1;
+        Debug.Log("Found " + vertices.ToString() + " unreliable vertices to optimize, out of " + _directionIsReliable.Length.ToString() + ".");
     }
 
     public static bool[] GetReliability(float[] ratios, float minRatio) {

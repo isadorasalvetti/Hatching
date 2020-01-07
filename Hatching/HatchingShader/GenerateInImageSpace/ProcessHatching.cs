@@ -16,24 +16,21 @@ public class ProcessHatching
     private float _dSeparation;
     private float _dTest;
     private int _gridSize = 50;
-    private int _width = 3;
 
     private List<List<Vector2>> Lines = new List<List<Vector2>>(); //Stores line points, in order from start to end.
-    private List<Vector3>[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
+    private List<Vector2>[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
     
-    public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.9f,
+    public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.8f,
         int gridSize = 0, int width = 0)
     {
         _texture = texture;
         _dSeparation = (int)(dSeparation * _texture.width);
-        _dSeparation = Mathf.Max(6, _dSeparation);
+        _dSeparation = Mathf.Max(5, _dSeparation);
         _dTest = (int)(dTest * _dSeparation);
-        _dTest = Mathf.Max(4, _dTest);
+        _dTest = Mathf.Max(3, _dTest);
         if (gridSize > 0) _gridSize = gridSize;
-        if (width > 0) _width = width;
-        if (width > 0) _width = width;
-        
-        PointGrid = new List<Vector3>[(int)(_texture.width/(_dSeparation))+1, (int)(_texture.height/(_dSeparation))+1];
+
+        PointGrid = new List<Vector2>[(int)(_texture.width/(_dSeparation))+1, (int)(_texture.height/(_dSeparation))+1];
         int testX, testY; getGridCoords(_texture.width, _texture.height, out testX, out testY);
         
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
@@ -41,31 +38,31 @@ public class ProcessHatching
         StartRandomSeed();
         DrawHatchings();
     }
-
+    
     bool isInvalidColor(Vector2 newPoint) {
         Color col = _texture.GetPixel((int)newPoint.x, -(int)newPoint.y);
         return Mathf.Abs(col.r) < Single.Epsilon && Mathf.Abs(col.g) < Single.Epsilon;
     }
-
+    
     bool isPositionOutTexture(Vector2 newPoint) {
         return newPoint.x < 0 || newPoint.y < 0 || newPoint.x > _texture.width || newPoint.y > _texture.height;
     }
-
-    void addPointToGrid(int gridX, int gridY, Vector2 point, float depth){
-        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector3>();
-        PointGrid[gridX, gridY].Add(new Vector3(point.x, point.y, depth));
+    
+    void addPointToGrid(int gridX, int gridY, Vector2 point){
+        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
+        PointGrid[gridX, gridY].Add(point);
     }
     
-    void addPointToGrid(int gridX, int gridY, float x, float y, float depth){
-        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector3>();
-        PointGrid[gridX, gridY].Add(new Vector3(x, y, depth));
+    void addPointToGrid(int gridX, int gridY, float x, float y){
+        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
+        PointGrid[gridX, gridY].Add(new Vector2(x, y));
     }
     
     void addPointToGrid(int gridX, int gridY, Vector3 point){
-        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector3>();
+        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
         PointGrid[gridX, gridY].Add(point);
     }
-
+    
     void getGridCoords(float x, float y, out int gridX, out int gridY){
         gridX = (int) (x / (_dSeparation));
         gridY = (int) (y / (_dSeparation));
@@ -78,16 +75,20 @@ public class ProcessHatching
         //Debug.Log(point.x.ToString() + ", " + point.y.ToString() + ", " + gridX.ToString() + ", " + gridY.ToString());
     }
 
-    List<Vector3> getSurroudingPoints(int gridX, int gridY)
+    List<Vector2> getSurroudingPoints(int gridX, int gridY)
     {
-        List<Vector3> combinedList = new List<Vector3>();
+        List<Vector2> combinedList = new List<Vector2>();
         for (int i = -1; i <= 1; i++)
-        for (int j = -1; j <= 1; j++){
-            if (PointGrid[gridX+i, gridY+j] != null) combinedList.AddRange(PointGrid[gridX+i, gridY+j]);
+        for (int j = -1; j <= 1; j++)
+        {
+            int dimX = PointGrid.GetLength(0); int dimY = PointGrid.GetLength(1);
+            int Gx = gridX + i; int Gy = gridY + j;
+            if (Gx < 0 || Gy < 0 || Gx > dimX || Gy > dimY) continue;
+            if (PointGrid[Gx, Gy] != null) combinedList.AddRange(PointGrid[Gx, Gy]);
         }
         return combinedList;
     }
-
+    
     void StartRandomSeed() {
         // Looks for a pixel with valid curvature in image.
 
@@ -104,7 +105,7 @@ public class ProcessHatching
                 direction = direction * 2 - Vector2.one;
                 
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
-                addPointToGrid(gridX, gridY, u, v, depth);
+                addPointToGrid(gridX, gridY, u, v);
                 AddLine(new Vector2(u, v), direction);
                 return;
             }
@@ -113,8 +114,7 @@ public class ProcessHatching
 
     void GetNextSeed(List<Vector2> line)
     {
-        if (Lines.Count > 500) Debug.Log("About to crash");
-        if (Lines.Count > 501) throw new Exception("Max number of lines reached");
+        if (Lines.Count > 500) throw new Exception("Max number of lines reached");
         
         int[] mults = {1, -1};
         foreach(int mult in mults)
@@ -139,7 +139,7 @@ public class ProcessHatching
             {
                 Vector2 direction = rg(pixelColor);
                 direction = direction * 2 - Vector2.one;
-                addPointToGrid(gridX, gridY, testPoint, depth);
+                addPointToGrid(gridX, gridY, testPoint);
                 AddLine(testPoint, direction);
                 break;
             }
@@ -170,7 +170,7 @@ public class ProcessHatching
     Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction)
     {
         //Gets next valid point for a line
-        Vector2 newPoint = previousPoint + _dSeparation * direction;
+        Vector2 newPoint = previousPoint + (0.75f * _dSeparation) * direction;
 
         //Reject points outside of image and finds adequate point in between.
         if (isPositionOutTexture(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
@@ -179,16 +179,14 @@ public class ProcessHatching
 
         // Stop and return if no valid point was found
         if(newPoint == Vector2.zero) return newPoint;
-        
-        float depth = pixelColor.b;
-        Vector3 newPoint3 = new Vector3(newPoint.x, newPoint.y, depth);
-        
+
         int gridX, gridY; getGridCoords(newPoint, out gridX, out gridY);
-        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector3>();
-        foreach(Vector3 comparePoint in getSurroudingPoints(gridX, gridY)){
-            if ((newPoint3 - comparePoint).magnitude < _dTest) return new Vector2();
+        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
+        foreach(Vector2 comparePoint in getSurroudingPoints(gridX, gridY)){
+            if (comparePoint != previousPoint)
+                if ((newPoint - comparePoint).magnitude < _dTest) return new Vector2();
         }
-        addPointToGrid(gridX, gridY, newPoint3);
+        addPointToGrid(gridX, gridY, newPoint);
 
         direction = rg(pixelColor);
         direction = direction * 2 - Vector2.one;
@@ -215,13 +213,13 @@ public class ProcessHatching
         //Debug.Log(string.Format("Point color: {0}", _texture.GetPixel((int)lastPointFound.x, -(int)lastPointFound.y)));
         return lastPointFound;
     }
-
-
+    
     Rgba32[] colors = {Rgba32.Black, Rgba32.Blue, Rgba32.Red, Rgba32.Yellow, Rgba32.Green};
     void DrawHatchings()
     {
         Debug.Log("Drawing Lines");
-        Image bitmap = new Image<Rgba32>(_texture.width, _texture.height);
+        //Image bitmap = new Image<Rgba32>(_texture.width, _texture.height);
+        Image bitmap = Image.Load<Rgba32>(_texture.EncodeToPNG());
         Debug.Log("Lines: " + Lines.Count.ToString());
         int k = 0;
         foreach (List<Vector2> line in Lines)
@@ -232,7 +230,7 @@ public class ProcessHatching
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
                 //Debug.Log("Line: " + string.Join(", ",
                 //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(colors[k], 2, pointFline));
+                bitmap.Mutate(x => x.DrawLines(colors[0], 2, pointFline));
             }
             k=(k+1)%5;
         }
