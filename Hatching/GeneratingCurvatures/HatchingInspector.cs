@@ -20,10 +20,13 @@ public class ObjectBuilderEditor : Editor
         GetCurvatures myScript = (GetCurvatures)target;
         if(GUILayout.Button("Compute Curvatures (Rossl)")) myScript.ComputeCurvatureRossl();
         else if(GUILayout.Button("Optimize Current Directions")) myScript.OptimizePrincipalDirections(reliabilityRatio);
-        if(GUILayout.Button("Align Current Directions")) myScript.AlignCurvatures();
-        else if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
+        else if(GUILayout.Button("Align Current Directions")) myScript.AlignCurvatures();
+        else if(GUILayout.Button("Rotate all directions 90 degres")) myScript.RotatePrincipalDirections(90);
+        else if(GUILayout.Button("View Ratios")) myScript.ShowRatios();
+        
         GUILine();
         if(GUILayout.Button("Get optimization test values")) myScript.TestCurvatureOptimization(reliabilityRatio);
+        else if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
         
     }
 }

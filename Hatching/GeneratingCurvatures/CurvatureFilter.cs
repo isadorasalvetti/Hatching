@@ -162,14 +162,17 @@ public class CurvatureFilter
         }
     }
 
-    public static Vector3[] AlignDirections(MeshInfo meshInfo)
+    public static Vector3[] AlignDirections(MeshInfo meshInfo, float[] ratios, float minRatio)
     {
         Debug.Log("Aligning curvatures");
         Debug.Log("Starting with" + showArray(meshInfo.principalDirections));
+
+        _directionIsReliable = GetReliability(ratios, minRatio);
         
         int[] triangles = meshInfo.mesh.triangles;
         bool[] frozenTriangles = new bool[meshInfo.mesh.vertices.Length];
         Vector3[] normals = meshInfo.mesh.normals;
+        bool workingOnUnreliableVertices = false;
         
         // Pool of triangles to evaluate next
         List<int> trianglePool = new List<int>();
@@ -193,37 +196,42 @@ public class CurvatureFilter
             
             float maxConsistency = -3;
             var maxConsistencyCoef = (0, 0, 0);
-            
-            //Find maximun consisntency
-            for (int k = -1; k < 2; k+=2)
-                for (int l = -1; l < 2; l+=2)
-                    for (int m = -1; m < 2; m+=2)
-                    {
-                        // Do not flip principal directions for frozen vertices
-                        if(k == -1 && frozenTriangles[tria]) continue;
-                        if(l == -1 && frozenTriangles[trib]) continue;
-                        if(m == -1 && frozenTriangles[tric]) continue;
 
-                        Vector3 Di = k*projectVector(meshInfo.principalDirections[tria], normals[tria]);
-                        Vector3 Dj = l*projectVector(meshInfo.principalDirections[trib], normals[trib]);
-                        Vector3 Dk = m*projectVector(meshInfo.principalDirections[tric], normals[tric]);
-                        
+            Vector3 pa = meshInfo.principalDirections[tria];
+            Vector3 pb = meshInfo.principalDirections[trib];
+            Vector3 pc = meshInfo.principalDirections[tric];
+            
+            for (int k = 0; k < 4; k+=1)
+                for (int l = 0; l < 4; l+=1)
+                    for (int m = 0; m < 4; m+=1)
+                    {
+                        // Do not change principal directions for frozen vertices
+                        if(k != 0 && frozenTriangles[tria]) continue;
+                        if(l != 0 && frozenTriangles[trib]) continue;
+                        if(m != 0 && frozenTriangles[tric]) continue;
+
+                        Vector3 Di = Quaternion.AngleAxis(90*k, normals[tria])*pa;
+                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib])*pb;
+                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric])*pc;
+
                         float my_consistency = Vector3.Dot(Di, Dj) + Vector3.Dot(Dj, Dk) + Vector3.Dot(Dk, Di);
+
                         if (my_consistency > maxConsistency) {
                             maxConsistency = my_consistency;
                             maxConsistencyCoef = (k, l, m);
                         }
                     }
-            
+                
             //Assign the max consistent vectors per triangle
             int inda = maxConsistencyCoef.Item1;
             int indb = maxConsistencyCoef.Item2;
             int indc = maxConsistencyCoef.Item3;
+            
             //Debug.Log("indices:" + inda.ToString() + indb.ToString() + indc.ToString());
             //Debug.Log("max consistency:" + maxConsistency);
-            meshInfo.principalDirections[tria] = inda*meshInfo.principalDirections[tria];
-            meshInfo.principalDirections[trib] = indb*meshInfo.principalDirections[trib];
-            meshInfo.principalDirections[tric] = indc*meshInfo.principalDirections[tric];
+            meshInfo.principalDirections[tria] = Quaternion.AngleAxis(90*inda, normals[tria])*meshInfo.principalDirections[tria];
+            meshInfo.principalDirections[trib] = Quaternion.AngleAxis(90*indb, normals[trib])*meshInfo.principalDirections[trib];
+            meshInfo.principalDirections[tric] = Quaternion.AngleAxis(90*indc, normals[tric])*meshInfo.principalDirections[tric];
 
             frozenTriangles[tria] = true;
             frozenTriangles[trib] = true;
@@ -237,6 +245,7 @@ public class CurvatureFilter
                 }
             }
         }
+        
         Debug.Log("Finishing with" + showArray(meshInfo.principalDirections));
         return meshInfo.principalDirections;
     }
@@ -247,6 +256,11 @@ public class CurvatureFilter
 
     private static Vector3 projectVector(Vector3 vec, Vector3 normal){
         return (vec - (Vector3.Dot(vec, normal)) * normal).normalized;           
+    }
+
+    public static void RotateAllDirectios(ref Vector3[] directions, Vector3[] normals, float angle)
+    {
+        for (int i = 0; i < directions.Length; i++) directions[i] = Quaternion.AngleAxis(angle, normals[i]) * directions[i];
     }
 
 }
