@@ -18,7 +18,7 @@ public class ProcessHatching
     private int _gridSize = 50;
 
     private List<List<Vector2>> Lines = new List<List<Vector2>>(); //Stores line points, in order from start to end.
-    private List<Tuple<List<Vector2>, bool>> NextLineCandidates = new List<Tuple<List<Vector2>, bool>>(); //Stores line points, in order from start to end.
+    private List<List<Vector2>> NextLineCandidates = new List<List<Vector2>>(); //Stores line points, in order from start to end.
     private List<Vector2>[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
     
     public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.8f,
@@ -108,6 +108,7 @@ public class ProcessHatching
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
                 addPointToGrid(gridX, gridY, u, v);
                 AddLine(new Vector2(u, v), direction);
+                GetNextSeed();
                 return;
             }
         }
@@ -116,20 +117,18 @@ public class ProcessHatching
     void GetNextSeed()
     {
         if (Lines.Count > 500) throw new Exception("Max number of lines reached");
+        Vector2 testPoint = Vector2.zero;
+        Vector2 direction = Vector2.zero;
 
-        while (true)
+        while (NextLineCandidates.Count > 0)
         {
-            if (NextLineCandidates.Count < 1) break;
-            
-            List<Vector2> line = NextLineCandidates[0].Item1;
-
+            List<Vector2> line = NextLineCandidates[0];
             int[] mults = {1, -1};
             foreach (int mult in mults)
             {
-                if (mult == 1 && NextLineCandidates[0].Item2) continue; // Skip the first check if it already happened
                 foreach (Vector2 point in line)
                 {
-                    Vector2 testPoint = point + new Vector2(_dSeparation, _dSeparation) * mult;
+                    testPoint = point + new Vector2(_dSeparation, _dSeparation) * mult;
                     if (testPoint.x < 0 || testPoint.y < 0 || testPoint.x > _texture.width ||
                         testPoint.y > _texture.height) continue;
                     Color pixelColor = _texture.GetPixel((int) testPoint.x, -(int) testPoint.y);
@@ -150,18 +149,16 @@ public class ProcessHatching
 
                     if (!isInvalidColor(testPoint) && validGrid)
                     {
-                        Vector2 direction = rg(pixelColor);
+                        direction = rg(pixelColor);
                         direction = direction * 2 - Vector2.one;
                         addPointToGrid(gridX, gridY, testPoint);
                         AddLine(testPoint, direction);
-                        if (!NextLineCandidates[0].Item2)
-                            NextLineCandidates[0] = new Tuple<List<Vector2>, bool>(NextLineCandidates[0].Item1, true);
-                        else NextLineCandidates.RemoveAt(0);
-                        break;
                     }
                 }
             }
+            
             NextLineCandidates.RemoveAt(0);
+            
         }
     }
 
@@ -182,9 +179,11 @@ public class ProcessHatching
                 newPoint = GetNextPoint(newPoint, ref direction);
             }
         }
-        if(line.Count > 2) Lines.Add(line);
-        NextLineCandidates.Add(new Tuple<List<Vector2>, bool>(line, false));
-        GetNextSeed();
+
+        if (line.Count > 2) {
+            Lines.Add(line);
+            NextLineCandidates.Add(line);
+        }
     }
 
     Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction)
@@ -250,7 +249,7 @@ public class ProcessHatching
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
                 //Debug.Log("Line: " + string.Join(", ",
                 //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(colors[k], 2, pointFline));
+                bitmap.Mutate(x => x.DrawLines(colors[0], 2, pointFline));
             }
             k=(k+1)%5;
         }
