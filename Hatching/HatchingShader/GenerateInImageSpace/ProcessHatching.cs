@@ -42,6 +42,7 @@ public class ProcessHatching
     
     bool isInvalidColor(Vector2 newPoint) {
         Color col = _texture.GetPixel((int)newPoint.x, -(int)newPoint.y);
+        return col.b > 0.99f;
         return Mathf.Abs(col.r) < Single.Epsilon && Mathf.Abs(col.g) < Single.Epsilon;
     }
     
@@ -103,7 +104,7 @@ public class ProcessHatching
                 Vector2 direction = rg(pixelColor);
                 float depth = pixelColor.b;
                 
-                direction = direction * 2 - Vector2.one;
+                direction = (direction * 2 - Vector2.one).normalized;
                 
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
                 addPointToGrid(gridX, gridY, u, v);
@@ -150,7 +151,7 @@ public class ProcessHatching
                     if (!isInvalidColor(testPoint) && validGrid)
                     {
                         direction = rg(pixelColor);
-                        direction = direction * 2 - Vector2.one;
+                        direction = (direction * 2 - Vector2.one).normalized;
                         addPointToGrid(gridX, gridY, testPoint);
                         AddLine(testPoint, direction);
                     }
@@ -166,17 +167,19 @@ public class ProcessHatching
     {
         //Creates new line starting at seed.
         List<Vector2> line = new List<Vector2>();
+        line.Add(seed);
         foreach (int mult in new int[2]{1, -1}){
             Vector2 direction = initialDirection;
             Vector2 newPoint = seed;
             for (int i = 0; i < 2000; i++)
             {
+                direction *= mult;
+                newPoint = GetNextPoint(newPoint, ref direction, mult);
                 if (newPoint == Vector2.zero) break;
-
                 if (mult > 0) line.Add(newPoint);
                 else line.Insert(0, newPoint);
-                direction *= mult;
-                newPoint = GetNextPoint(newPoint, ref direction);
+                
+                if (direction == Vector2.zero) break;
             }
         }
 
@@ -186,7 +189,7 @@ public class ProcessHatching
         }
     }
 
-    Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction)
+    Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, int mult)
     {
         //Gets next valid point for a line
         Vector2 newPoint = previousPoint + (0.75f * _dSeparation) * direction;
@@ -205,31 +208,31 @@ public class ProcessHatching
             if (comparePoint != previousPoint)
                 if ((newPoint - comparePoint).magnitude < _dTest) return new Vector2();
         }
+        
+        Vector2 new_direction = rg(pixelColor);
+        new_direction = (new_direction * 2 - Vector2.one).normalized;
+        
+        if (Vector2.Dot(direction, new_direction*mult) < 0) {
+            direction = Vector2.zero;
+        } else direction = new_direction;
+
         addPointToGrid(gridX, gridY, newPoint);
 
-        direction = rg(pixelColor);
-        direction = direction * 2 - Vector2.one;
-        
         return newPoint;
     }
 
     Vector2 GetIntermediaryPoint(Vector2 first, Vector2 second){
         //gets last valid point between fist and second points.
         Vector2 direction = second - first;
-        Vector2 point_found = Vector2.zero;
-        Vector2 pointToCheck = first + direction/2;
+        Vector2 pointToCheck = first + direction/10;
         Vector2 lastPointFound = Vector2.zero;
-        for (int i = 2; i < 6 ; i++){
+        for (int i = 0; i < 10 ; i++){
             if(isPositionOutTexture(pointToCheck) || isInvalidColor(pointToCheck)){
-                pointToCheck = pointToCheck - direction/i/2;
+                return lastPointFound;
             }
-            else{
-                pointToCheck = pointToCheck + direction/i/2;
-                lastPointFound = pointToCheck;
-            }
+            pointToCheck = pointToCheck + direction/10;
+            lastPointFound = pointToCheck;
         }
-        //Debug.Log(string.Format("Intermediary point found: {0}, between {1} and {2}", lastPointFound, first, second));
-        //Debug.Log(string.Format("Point color: {0}", _texture.GetPixel((int)lastPointFound.x, -(int)lastPointFound.y)));
         return lastPointFound;
     }
     
