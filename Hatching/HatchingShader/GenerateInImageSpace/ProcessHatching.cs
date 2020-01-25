@@ -34,18 +34,21 @@ public class ProcessHatching
         PointGrid = new List<Vector2>[(int)(_texture.width/(_dSeparation))+1, (int)(_texture.height/(_dSeparation))+1];
         int testX, testY; getGridCoords(_texture.width, _texture.height, out testX, out testY);
         
-        Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
-        
-        StartRandomSeed();
-        DrawHatchings();
     }
     
     bool isInvalidColor(Vector2 newPoint) {
-        Color col = _texture.GetPixel((int)newPoint.x, -(int)newPoint.y);
+        Color col = readTexturePixel(_texture, (int)newPoint.x, (int)newPoint.y);
         return col.b > 0.99f;
         return Mathf.Abs(col.r) < Single.Epsilon && Mathf.Abs(col.g) < Single.Epsilon;
     }
-    
+
+    Color readTexturePixel(Texture2D texture, int u, int v)
+    {
+        int x = u;
+        int y = texture.height - v;
+        return texture.GetPixel(x, y);
+    }
+
     bool isPositionOutTexture(Vector2 newPoint) {
         return newPoint.x < 0 || newPoint.y < 0 || newPoint.x > _texture.width || newPoint.y > _texture.height;
     }
@@ -85,39 +88,48 @@ public class ProcessHatching
         {
             int dimX = PointGrid.GetLength(0); int dimY = PointGrid.GetLength(1);
             int Gx = gridX + i; int Gy = gridY + j;
-            if (Gx < 0 || Gy < 0 || Gx > dimX || Gy > dimY) continue;
+            if (Gx < 0 || Gy < 0 || Gx >= dimX || Gy >= dimY) continue;
             if (PointGrid[Gx, Gy] != null) combinedList.AddRange(PointGrid[Gx, Gy]);
         }
         return combinedList;
     }
     
-    void StartRandomSeed() {
+    public void StartRandomSeed() {
         // Looks for a pixel with valid curvature in image.
 
         Debug.Log("Looking for seeds");
         for (int u = 0; u < _texture.width; u += _gridSize)
         for (int v = 0; v < _texture.height; v += _gridSize)
         {
-            Color pixelColor = _texture.GetPixel(u, -v);
+            Vector2 testPoint = new Vector2(u, v);
+            Color pixelColor =  readTexturePixel(_texture, u, v);
             if (!isInvalidColor(new Vector2(u, v)))
             {
-                Vector2 direction = rg(pixelColor);
-                float depth = pixelColor.b;
-                
-                direction = (direction * 2 - Vector2.one).normalized;
-                
+                bool skip = false;
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
-                addPointToGrid(gridX, gridY, u, v);
-                AddLine(new Vector2(u, v), direction);
-                GetNextSeed();
-                return;
+                foreach(Vector2 comparePoint in getSurroudingPoints(gridX, gridY)){
+                    if ((testPoint - comparePoint).magnitude < _dSeparation) {
+                        skip = true;
+                        break;
+                    }
+                }
+
+                if (!skip) {
+                    Vector2 direction = rg(pixelColor);
+                    direction = (direction * 2 - Vector2.one);
+
+                    addPointToGrid(gridX, gridY, u, v);
+                    AddLine(new Vector2(u, v), direction);
+                    GetNextSeed();
+                }
+                
             }
         }
     }
 
     void GetNextSeed()
     {
-        if (Lines.Count > 500) throw new Exception("Max number of lines reached");
+        if (Lines.Count > 1500) throw new Exception("Max number of lines reached");
         Vector2 testPoint = Vector2.zero;
         Vector2 direction = Vector2.zero;
 
@@ -132,7 +144,7 @@ public class ProcessHatching
                     testPoint = point + new Vector2(_dSeparation, _dSeparation) * mult;
                     if (testPoint.x < 0 || testPoint.y < 0 || testPoint.x > _texture.width ||
                         testPoint.y > _texture.height) continue;
-                    Color pixelColor = _texture.GetPixel((int) testPoint.x, -(int) testPoint.y);
+                    Color pixelColor =  readTexturePixel(_texture, (int)testPoint.x, (int)testPoint.y);
                     float depth = pixelColor.b;
 
                     Vector3 testPoint3 = new Vector3(testPoint.x, testPoint.y, depth);
@@ -187,6 +199,7 @@ public class ProcessHatching
             Lines.Add(line);
             NextLineCandidates.Add(line);
         }
+        
     }
 
     Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, int mult)
@@ -196,7 +209,7 @@ public class ProcessHatching
 
         //Reject points outside of image and finds adequate point in between.
         if (isPositionOutTexture(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
-        Color pixelColor = _texture.GetPixel((int)newPoint.x, -(int)newPoint.y);
+        Color pixelColor =  readTexturePixel(_texture, (int)newPoint.x, (int)newPoint.y);
         if (isInvalidColor(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
 
         // Stop and return if no valid point was found
@@ -212,7 +225,7 @@ public class ProcessHatching
         Vector2 new_direction = rg(pixelColor);
         new_direction = (new_direction * 2 - Vector2.one).normalized;
         
-        if (Vector2.Dot(direction, new_direction*mult) < 0) {
+        if (Vector2.Dot(direction, new_direction*mult) < 0.5) {
             direction = Vector2.zero;
         } else direction = new_direction;
 
@@ -237,11 +250,10 @@ public class ProcessHatching
     }
     
     Rgba32[] colors = {Rgba32.Black, Rgba32.Blue, Rgba32.Red, Rgba32.Yellow, Rgba32.Green};
-    void DrawHatchings()
+    public void DrawHatchings(Image bitmap)
     {
         Debug.Log("Drawing Lines");
         //Image bitmap = new Image<Rgba32>(_texture.width, _texture.height);
-        Image bitmap = Image.Load<Rgba32>(_texture.EncodeToPNG());
         Debug.Log("Lines: " + Lines.Count.ToString());
         int k = 0;
         foreach (List<Vector2> line in Lines)
@@ -252,13 +264,11 @@ public class ProcessHatching
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
                 //Debug.Log("Line: " + string.Join(", ",
                 //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(colors[0], 2, pointFline));
+                bitmap.Mutate(x => x.DrawLines(colors[0], 1, pointFline));
             }
             k=(k+1)%5;
         }
-
-        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
-        //bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
+        
     }
 
     Vector2 rg(Color color)

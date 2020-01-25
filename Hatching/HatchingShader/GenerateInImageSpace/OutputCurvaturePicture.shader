@@ -38,13 +38,14 @@
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.color = UnityObjectToClipPos(v.color);
+                o.color =  UnityObjectToClipPos(v.color);
+                //o.vertex = UnityObjectToClipPos(float4((v.uv-0.5f)*2, 1, 1));
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                fixed2 curv_direction = normalize(i.color.xy/i.color.w);
+                fixed2 curv_direction = i.color.xy/i.color.w;
                 fixed4 col = fixed4(curv_direction*0.5 + 0.5, i.color.z, 1);
                 return col;
             }

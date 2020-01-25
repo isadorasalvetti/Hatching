@@ -122,7 +122,7 @@ public class GetCurvatures : MonoBehaviour
         }
     }
 
-    private Mesh GetSmoothMesh(Mesh mesh, out List<List<int>> mapToOld){
+    private Mesh GetSmoothMesh(Mesh mesh, out List<List<int>> mapToOld) {
         Mesh smoothMesh = new Mesh();
         int[] vertexTransformation = new int[mesh.vertices.Length];
         List<Vector3> uniqueVertexPositions = new List<Vector3>();
@@ -178,15 +178,14 @@ public class GetCurvatures : MonoBehaviour
 
         foreach (MeshInfo meshInfo in _meshInfos) {
             Color[] colors = new Color[meshInfo.mesh.colors.Length];
-            for (int i = 0; i < meshInfo.principalDirections.Length; i++)
-            {
+            for (int i = 0; i < meshInfo.principalDirections.Length; i++) {
                 meshInfo.principalDirections[i] = new Vector3(1-meshInfo.curvatureRatios[i], 0, 0);
             }
             ApplyPrincipalDirectios();
         }
     }
 
-    float MaxCurvature(float[] curv){
+    float MaxCurvature(float[] curv) {
             float max = 0;
             foreach (var t in curv){
                 if (t>max) max = t;
@@ -194,12 +193,20 @@ public class GetCurvatures : MonoBehaviour
             return max;
         }
 
-        public void RotatePrincipalDirections(float angle)
-        {
+        public void RotatePrincipalDirections(float angle) {
             if (!Initialize()) {Debug.Log("Curvatures not computed"); return;}
             for (int m = 0; m < _meshInfos.Length; m++){
                 CurvatureFilter.RotateAllDirectios(ref _meshInfos[m].principalDirections, _meshInfos[m].mesh.normals, angle);
             }
             ApplyPrincipalDirectios();
+        }
+
+        public void RotateVertexColors() {
+            foreach (MeshFilter meshFilter in GetComponentsInChildren<MeshFilter>()) {
+                List<Color> colors = new List<Color>(meshFilter.mesh.colors);
+                Vector3[] colorsAsVectors = colors.ConvertAll(j => new Vector3(j.r, j.g, j.b)).ToArray();
+                CurvatureFilter.RotateAllDirectios(ref colorsAsVectors, meshFilter.mesh.normals, 90);
+                meshFilter.mesh.SetColors(new List<Vector3>(colorsAsVectors).ConvertAll(j => new Color(j.x, j.y, j.z)));
+            }
         }
 }

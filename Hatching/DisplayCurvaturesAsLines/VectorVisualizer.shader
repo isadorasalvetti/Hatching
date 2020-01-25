@@ -33,6 +33,7 @@ Shader "Unlit/ColorAsLines"
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
+                //o.vertex = fixed4(1, 1, 1, 1);
                 return o;
             }
            
@@ -56,6 +57,7 @@ Shader "Unlit/ColorAsLines"
                 float4 vertex : POSITION;
                 float4 color : COLOR;
                 float normal : NORMAL;
+                float2 uv : TEXCOORD0;
             };
             
             struct v2g
@@ -77,6 +79,7 @@ Shader "Unlit/ColorAsLines"
             {
                 v2g o;
                 o.vertex = v.vertex;
+                //o.vertex = float4((v.uv-0.5f)*2, 1, 1);
                 o.color = v.color;
                 o.color.w = 0;
                 return o;
