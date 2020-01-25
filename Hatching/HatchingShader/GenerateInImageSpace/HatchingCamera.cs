@@ -32,6 +32,8 @@ public class HatchingCamera : MonoBehaviour
             MakeHatching();
         }
     }
+    
+    
 
     public Texture2D RenderCamera()
     {
@@ -50,9 +52,10 @@ public class HatchingCamera : MonoBehaviour
         RenderTexture.active = myCamera.targetTexture;
 
         Texture2D texture = RenderCamera();
-        Image bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        //Image bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        Image bitmap = new Image<Rgba32>(texture.width, texture.height);
         
-        ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest);
+        ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level: 0.8f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
@@ -61,7 +64,7 @@ public class HatchingCamera : MonoBehaviour
         foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
         
         texture = RenderCamera();
-        hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest);
+        hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level: 0.3f);
         Debug.Log("Drawing parallel lines.");
         hatching.StartRandomSeed();
         hatching.DrawHatchings(bitmap);

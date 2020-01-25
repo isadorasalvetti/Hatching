@@ -12,7 +12,7 @@
             HLSLPROGRAM
             #pragma vertex Vert
             #pragma fragment Frag
-			#include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
+			#include "PostProcessing/Shaders/StdLib.hlsl"
 
 			TEXTURE2D_SAMPLER2D(_MainTex, sampler_MainTex);
 			// _CameraNormalsTexture contains the view space normals transformed

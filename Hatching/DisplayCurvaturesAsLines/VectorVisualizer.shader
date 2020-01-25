@@ -64,6 +64,7 @@ Shader "Unlit/ColorAsLines"
             {
                 float4 vertex : SV_POSITION;
                 float4 color : COLOR;
+                
             };
  
             struct g2f

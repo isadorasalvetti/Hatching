@@ -14,6 +14,7 @@ public class ProcessHatching
 {
     private Texture2D _texture;
     private float _dSeparation;
+    private float _level;
     private float _dTest;
     private int _gridSize = 50;
 
@@ -22,8 +23,8 @@ public class ProcessHatching
     private List<Vector2>[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
     
     public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.8f,
-        int gridSize = 0, int width = 0)
-    {
+        int gridSize = 0, float level = 1.0f){
+        _level = level; // Used to signal which area should be hatched.
         _texture = texture;
         _dSeparation = (int)(dSeparation * _texture.width);
         _dSeparation = Mathf.Max(5, _dSeparation);
@@ -38,7 +39,7 @@ public class ProcessHatching
     
     bool isInvalidColor(Vector2 newPoint) {
         Color col = readTexturePixel(_texture, (int)newPoint.x, (int)newPoint.y);
-        return col.b > 0.99f;
+        return col.b > 0.9f || col.a > _level;
         return Mathf.Abs(col.r) < Single.Epsilon && Mathf.Abs(col.g) < Single.Epsilon;
     }
 
@@ -253,7 +254,6 @@ public class ProcessHatching
     public void DrawHatchings(Image bitmap)
     {
         Debug.Log("Drawing Lines");
-        //Image bitmap = new Image<Rgba32>(_texture.width, _texture.height);
         Debug.Log("Lines: " + Lines.Count.ToString());
         int k = 0;
         foreach (List<Vector2> line in Lines)
