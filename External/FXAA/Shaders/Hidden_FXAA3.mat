@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: CurvatureClipSpace
-  m_Shader: {fileID: 4800000, guid: 83c8b32dec8fc584ab3033e716dacc78, type: 3}
+  m_Name: Hidden_FXAA3
+  m_Shader: {fileID: 4800000, guid: 3d417cf48fde7da46b5a79811115e87f, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0

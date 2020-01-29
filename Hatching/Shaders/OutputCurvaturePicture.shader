@@ -2,12 +2,14 @@
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
         _WhiteOffset("White offset", range(0, 10)) = 1
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { 
+        "RenderType"="Opaque"
+        "LightMode" = "ForwardBase"
+        }
         LOD 100
 
         Pass
@@ -31,12 +33,10 @@
             {
                 float4 color : COLOR;
                 float4 vertex : SV_POSITION;
-                float3 normal: TEXCOORD1;
+                float3 normal: NORMAL;
                 float3 viewDir : TEXCOORD2;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
             float _WhiteOffset;
 
             v2f vert (appdata v)
@@ -44,7 +44,7 @@
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.color =  UnityObjectToClipPos(v.color);
-                o.normal = normalize(v.normal);
+                o.normal = normalize(UnityObjectToWorldNormal(normalize(v.normal)));
                 o.viewDir = normalize(UnityWorldSpaceViewDir(mul(unity_ObjectToWorld, v.vertex)));
                 //o.vertex = UnityObjectToClipPos(float4((v.uv-0.5f)*2, 1, 1));                
 

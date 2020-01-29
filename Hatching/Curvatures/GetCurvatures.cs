@@ -205,7 +205,7 @@ public class GetCurvatures : MonoBehaviour
             foreach (MeshFilter meshFilter in GetComponentsInChildren<MeshFilter>()) {
                 List<Color> colors = new List<Color>(meshFilter.mesh.colors);
                 Vector3[] colorsAsVectors = colors.ConvertAll(j => new Vector3(j.r, j.g, j.b)).ToArray();
-                CurvatureFilter.RotateAllDirectios(ref colorsAsVectors, meshFilter.mesh.normals, 90);
+                CurvatureFilter.RotateAllDirectios(ref colorsAsVectors, meshFilter.sharedMesh.normals, 90);
                 meshFilter.mesh.SetColors(new List<Vector3>(colorsAsVectors).ConvertAll(j => new Color(j.x, j.y, j.z)));
             }
         }

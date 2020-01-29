@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
@@ -17,8 +18,12 @@ public class HatchingCamera : MonoBehaviour
     public GameObject[] objectsVisible; //TODO: make this automatic and check if they are visible
 
     private Camera myCamera;
-    
+    public Material normalsNDepth;
+    public Material imageSpaceOutline;
+    public Material principalDirections;
 
+    private int diff = 0;
+    
     private void Start()
     {
         myCamera = GetComponent<Camera>();
@@ -26,14 +31,18 @@ public class HatchingCamera : MonoBehaviour
 
     private void Update()
     {
-        if (getAnImage)
-        {
+        if (getAnImage) {
+            diff = 0;
             getAnImage = false;
-            MakeHatching();
+            for (int i = 0; i < 36; i++) {
+                MakeHatching();
+                foreach (var mesh in objectsVisible) {
+                    mesh.transform.Rotate(Vector3.left, 10);
+                }
+                diff++;
+            }
         }
     }
-    
-    
 
     public Texture2D RenderCamera()
     {
@@ -47,13 +56,34 @@ public class HatchingCamera : MonoBehaviour
         return texture;
     }
 
+    private void changeMaterials(Material newMaterial){
+        foreach (var visibleObject in objectsVisible) {
+            var meshRenderer = visibleObject.GetComponent<MeshRenderer>();
+            var currentMaterials = meshRenderer.materials;
+            Material[] newMaterials = Enumerable.Repeat(newMaterial, currentMaterials.Length).ToArray();
+            meshRenderer.materials = newMaterials;
+        }
+    }
+
     public void MakeHatching()
     {
         RenderTexture.active = myCamera.targetTexture;
 
+        // Outline
+        changeMaterials(normalsNDepth);
+        var cameraTexture = myCamera.targetTexture;
         Texture2D texture = RenderCamera();
+        Graphics.Blit(texture, cameraTexture, imageSpaceOutline);
+        cameraTexture.ResolveAntiAliasedSurface();
+        texture.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
+        texture.Apply();
+        Image bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        
+        // Hatching
+        changeMaterials(principalDirections);
+        texture = RenderCamera();
         //Image bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        Image bitmap = new Image<Rgba32>(texture.width, texture.height);
+        //Image bitmap = new Image<Rgba32>(texture.width, texture.height);
         
         ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level: 0.8f);
                 
@@ -69,7 +99,9 @@ public class HatchingCamera : MonoBehaviour
         hatching.StartRandomSeed();
         hatching.DrawHatchings(bitmap);
         
-        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test.png", new PngEncoder());
+        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test" + diff.ToString() + ".png", new PngEncoder());
         //bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
+        
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
     }
 }

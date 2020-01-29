@@ -10,7 +10,10 @@ Shader "Unlit/ShadingLevels"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags {
+        "RenderType"="Opaque"
+        "LightMode" = "ForwardBase" 
+        }
         LOD 100
 
         Pass
@@ -48,7 +51,7 @@ Shader "Unlit/ShadingLevels"
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv = TRANSFORM_TEX(v.uv, _Hatching);
-                o.normal = normalize(v.normal);
+                o.normal = normalize(UnityObjectToWorldNormal(v.normal));
                 o.viewDir = normalize(UnityWorldSpaceViewDir(mul(unity_ObjectToWorld, v.vertex)));
                 return o;
             }
