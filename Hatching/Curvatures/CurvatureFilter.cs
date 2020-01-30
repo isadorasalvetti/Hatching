@@ -175,13 +175,21 @@ public class CurvatureFilter
         bool workingOnUnreliableVertices = false;
         
         // Pool of triangles to evaluate next
+        List<int> unreliableTrianglePool = new List<int>();
         List<int> trianglePool = new List<int>();
         trianglePool.Add(0);
 
+        bool doingUnreliableTriangles = false;
+        
         for(int count=0; count < 100000; count++)
         {
             //Stop if there are no availabl triangles
-            if (trianglePool.Count < 1) break;
+            if (trianglePool.Count < 1)
+                if (unreliableTrianglePool.Count < 1) break;
+                else {
+                    trianglePool = unreliableTrianglePool;
+                    doingUnreliableTriangles = true;
+                }
 
             //Get next triangle to evaluate and its vertices
             int currentTriangle = trianglePool[0];
@@ -200,7 +208,19 @@ public class CurvatureFilter
             Vector3 pa = meshInfo.principalDirections[tria];
             Vector3 pb = meshInfo.principalDirections[trib];
             Vector3 pc = meshInfo.principalDirections[tric];
-            
+
+            if (!doingUnreliableTriangles &&
+                (!_directionIsReliable[tria] || !_directionIsReliable[trib] || !_directionIsReliable[tric])) {
+                unreliableTrianglePool.Add(currentTriangle);
+                for (int i = 0; i<3; i++){
+                    foreach (int id in meshInfo.neighboohood[triangles[currentTriangle*3+i]]){
+                        int tri_id = id/3;
+                        if(!trianglePool.Contains(tri_id)) trianglePool.Add(tri_id);
+                    }
+                }
+                continue;
+            }
+
             for (int k = 0; k < 4; k+=1)
                 for (int l = 0; l < 4; l+=1)
                     for (int m = 0; m < 4; m+=1)
@@ -210,11 +230,13 @@ public class CurvatureFilter
                         if(l != 0 && frozenTriangles[trib]) continue;
                         if(m != 0 && frozenTriangles[tric]) continue;
 
-                        Vector3 Di = Quaternion.AngleAxis(90*k, normals[tria])*pa;
-                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib])*pb;
-                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric])*pc;
+                        Vector3 Di = Quaternion.AngleAxis(90*k, normals[tria]) * pa;
+                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib]) * pb * Convert.ToInt16(_directionIsReliable[trib]);
+                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric]) * pc * Convert.ToInt16(_directionIsReliable[tric]);
 
-                        float my_consistency = Vector3.Dot(Di, Dj) + Vector3.Dot(Dj, Dk) + Vector3.Dot(Dk, Di);
+                        float my_consistency = Vector3.Dot(Di, Dj)
+                                               + Vector3.Dot(Dj, Dk)
+                                               + Vector3.Dot(Dk, Di);
 
                         if (my_consistency > maxConsistency) {
                             maxConsistency = my_consistency;
