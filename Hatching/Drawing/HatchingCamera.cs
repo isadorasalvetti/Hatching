@@ -34,11 +34,11 @@ public class HatchingCamera : MonoBehaviour
         if (getAnImage) {
             diff = 0;
             getAnImage = false;
-            for (int i = 0; i < 36; i++) {
+            for (int i = 0; i < 1; i++) {
                 MakeHatching();
-                foreach (var mesh in objectsVisible) {
-                    mesh.transform.Rotate(Vector3.left, 10);
-                }
+                //foreach (var mesh in objectsVisible) {
+                    //mesh.transform.Rotate(Vector3.left, 10);
+                //}
                 diff++;
             }
         }

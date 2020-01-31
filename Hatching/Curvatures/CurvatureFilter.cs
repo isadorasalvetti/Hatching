@@ -175,9 +175,19 @@ public class CurvatureFilter
         bool workingOnUnreliableVertices = false;
         
         // Pool of triangles to evaluate next
-        List<int> unreliableTrianglePool = new List<int>();
-        List<int> trianglePool = new List<int>();
-        trianglePool.Add(0);
+        SortedList<float, int> trianglePool = new SortedList<float, int>();
+
+        float max_consistency = float.PositiveInfinity;
+        int max_consistency_triangle = -1;
+        for (int i = 0; i < triangles.Length/3; i++){
+            float consistency = getTriConsistency(i, ref ratios, ref meshInfo);
+            if (consistency < max_consistency) {
+                max_consistency = consistency;
+                max_consistency_triangle = i;
+            }
+        }
+
+        trianglePool.Add(getTriConsistency(max_consistency_triangle, ref ratios, ref meshInfo), 0);
 
         bool doingUnreliableTriangles = false;
         
@@ -185,14 +195,10 @@ public class CurvatureFilter
         {
             //Stop if there are no availabl triangles
             if (trianglePool.Count < 1)
-                if (unreliableTrianglePool.Count < 1) break;
-                else {
-                    trianglePool = unreliableTrianglePool;
-                    doingUnreliableTriangles = true;
-                }
+                break;
 
             //Get next triangle to evaluate and its vertices
-            int currentTriangle = trianglePool[0];
+            int currentTriangle = trianglePool.Values[0];
             trianglePool.RemoveAt(0);
 
             int tria = triangles[currentTriangle*3+0];
@@ -209,18 +215,6 @@ public class CurvatureFilter
             Vector3 pb = meshInfo.principalDirections[trib];
             Vector3 pc = meshInfo.principalDirections[tric];
 
-            if (!doingUnreliableTriangles &&
-                (!_directionIsReliable[tria] || !_directionIsReliable[trib] || !_directionIsReliable[tric])) {
-                unreliableTrianglePool.Add(currentTriangle);
-                for (int i = 0; i<3; i++){
-                    foreach (int id in meshInfo.neighboohood[triangles[currentTriangle*3+i]]){
-                        int tri_id = id/3;
-                        if(!trianglePool.Contains(tri_id)) trianglePool.Add(tri_id);
-                    }
-                }
-                continue;
-            }
-
             for (int k = 0; k < 4; k+=1)
                 for (int l = 0; l < 4; l+=1)
                     for (int m = 0; m < 4; m+=1)
@@ -231,12 +225,12 @@ public class CurvatureFilter
                         if(m != 0 && frozenTriangles[tric]) continue;
 
                         Vector3 Di = Quaternion.AngleAxis(90*k, normals[tria]) * pa;
-                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib]) * pb * Convert.ToInt16(_directionIsReliable[trib]);
-                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric]) * pc * Convert.ToInt16(_directionIsReliable[tric]);
+                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib]) * pb;
+                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric]) * pc;
 
-                        float my_consistency = Vector3.Dot(Di, Dj)
-                                               + Vector3.Dot(Dj, Dk)
-                                               + Vector3.Dot(Dk, Di);
+                        float my_consistency = Vector3.Dot(Di, Dj) * (1 - ratios[tria]*ratios[trib])
+                                               + Vector3.Dot(Dj, Dk) * (1 - ratios[trib]*ratios[tric])
+                                               + Vector3.Dot(Dk, Di) * (1 - ratios[tric]*ratios[tria]);
 
                         if (my_consistency > maxConsistency) {
                             maxConsistency = my_consistency;
@@ -263,13 +257,26 @@ public class CurvatureFilter
             for (int i = 0; i<3; i++){
                 foreach (int id in meshInfo.neighboohood[triangles[currentTriangle*3+i]]){
                     int tri_id = id/3;
-                    if(!trianglePool.Contains(tri_id)) trianglePool.Add(tri_id);
+                    if(!trianglePool.Values.Contains(tri_id)) trianglePool.Add(getTriConsistency(tri_id, ref ratios, ref meshInfo), tri_id);
                 }
             }
         }
         
         Debug.Log("Finishing with" + showArray(meshInfo.principalDirections));
         return meshInfo.principalDirections;
+    }
+
+    private static float getTriConsistency(int triid, ref float[] ratios, ref MeshInfo meshInfo){
+        int[] triangles = meshInfo.mesh.triangles;
+        int tria = triangles[triid*3+0];
+        int trib = triangles[triid*3+1];
+        int tric = triangles[triid*3+2];
+        
+        float pa = ratios[tria];
+        float pb = ratios[trib];
+        float pc = ratios[tric];
+
+        return (pa + pb + pc + 1)*1000 + triid;
     }
 
     private static Vector3 CtoV(Color c){
