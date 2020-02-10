@@ -68,22 +68,34 @@ public class HatchingCamera : MonoBehaviour
     public void MakeHatching()
     {
         RenderTexture.active = myCamera.targetTexture;
+        Image bitmap;
 
         // Outline
         changeMaterials(normalsNDepth);
         var cameraTexture = myCamera.targetTexture;
         Texture2D texture = RenderCamera();
+
+        //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
+        
         Graphics.Blit(texture, cameraTexture, imageSpaceOutline);
-        cameraTexture.ResolveAntiAliasedSurface();
+        
         texture.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
         texture.Apply();
-        Image bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        
+        bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\Outline" + diff.ToString() + ".png", new PngEncoder());
+        
         
         // Hatching
         changeMaterials(principalDirections);
         texture = RenderCamera();
-        //Image bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        //Image bitmap = new Image<Rgba32>(texture.width, texture.height);
+        
+        //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\PDImageSpace" + diff.ToString() + ".png", new PngEncoder());
+        
+        //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        //bitmap = new Image<Rgba32>(texture.width, texture.height);
         
         ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level: 0.8f);
                 

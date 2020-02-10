@@ -54,19 +54,27 @@ public class CurvatureFilter
         return result;
     };
 
-    static Func<double[], double[]> EnergyGradient = delegate(double[] theta){
-        double[] result = new double[theta.Length];        
+    public static void EnergyGradient(double[] theta, ref double func, double[] grad, object obj){
+        func = 0;
+        for(int i=0; i< _mesh.vertexCount; i++){
+            if (_directionIsReliable[i]) continue;
+            List<int> neighboors = _neighboors[i];
+            for(int j=0; j<neighboors.Count; j++){
+                int _j = _mesh.triangles[neighboors[j]];
+                func -= Math.Cos(4 * ((theta[i]-_phi[(i, _j)]) - (theta[_j]-_phi[(_j, i)])));
+            }
+        }
+        
         for(int i=0; i< _mesh.vertexCount; i++){
             if (_directionIsReliable[i]) continue;
             List<int> neighboors = _neighboors[i];
                 for(int j=0; j<neighboors.Count; j++){
                     int _j = _mesh.triangles[neighboors[j]];
-                    result[i] -= -4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
-                    result[_j] -= 4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
+                    grad[i] -= -4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
+                    grad[_j] -= 4 * Math.Sin(4*(theta[i] - theta[_j] - _phi[(i, _j)] + _phi[(_j, i)]));
                 }
         }
-        return result;
-    };
+    }
 
     public static void TestEnergyResults(MeshInfo meshInfo, bool[] directionIsReliable, int results=30)
     {
@@ -78,7 +86,7 @@ public class CurvatureFilter
         Debug.Log("Thetas: " + showArray(_theta));
         Debug.Log("Phis: " + string.Join(", ", new List<double>(_phi.Values).ConvertAll(j => j.ToString())));  
         
-        
+        /*
         double EPS = 1e-5;	
         double[] gradient = EnergyGradient(_theta);
         double[] numericalGradient = new double[_theta.Length];	
@@ -113,19 +121,44 @@ public class CurvatureFilter
         
         Debug.Log("Energies: " + showArray(Energies));
         Debug.Log("Increment per step: " + increment.ToString());
-        
+        */
     }
 
+    /*
     public static Vector3[] MinimizeEnergy(MeshInfo meshInfo, bool[] directionIsReliable){
         Debug.Log("Start Minimization.");
         SetUpMinimizationData(meshInfo, directionIsReliable);
         ComputePhiTheta(meshInfo);
         var lbfgs = new BroydenFletcherGoldfarbShanno(numberOfVariables: _theta.Length,
-                                                      function: EnergyFunction, gradient: EnergyGradient);
+            function: EnergyFunction, gradient: EnergyGradient);
         double success = lbfgs.Minimize(_theta);
         double[] solutionTheta = lbfgs.Solution;
         Debug.Log("Initial Energy: " + EnergyFunction(_theta).ToString());
         Debug.Log("Optimal Energy: " + EnergyFunction(solutionTheta).ToString());
+        return getNewVectors(solutionTheta);
+    }
+    */
+    
+    public static Vector3[] MinimizeEnergy(MeshInfo meshInfo, bool[] directionIsReliable){
+        Debug.Log("Start Minimization.");
+        SetUpMinimizationData(meshInfo, directionIsReliable);
+        ComputePhiTheta(meshInfo);
+        alglib.minlbfgsstate lbfgs;
+        alglib.minlbfgscreate(1, _theta, out lbfgs);
+        
+        // Run
+        double[] solutionTheta;
+        alglib.minlbfgsreport report;
+        alglib.minlbfgsoptimize(lbfgs, EnergyGradient, null, null);
+        alglib.minlbfgsresults(lbfgs, out solutionTheta, out report);
+        alglib.minlbfgssetcond(lbfgs, 0, 0, 0, 0);
+        
+        Debug.Log("Initial Energy: " + EnergyFunction(_theta).ToString());
+        Debug.Log("Optimal Energy: " + EnergyFunction(solutionTheta).ToString());
+        Debug.Log("Initial Theta: " + showArray(_theta));
+        Debug.Log("Optimal Theta: " + showArray(solutionTheta).ToString());
+        Debug.Log("Report: " + report.terminationtype.ToString() + ", " + report.iterationscount.ToString());
+        
         return getNewVectors(solutionTheta);
     }
 
@@ -172,8 +205,7 @@ public class CurvatureFilter
         int[] triangles = meshInfo.mesh.triangles;
         bool[] frozenTriangles = new bool[meshInfo.mesh.vertices.Length];
         Vector3[] normals = meshInfo.mesh.normals;
-        bool workingOnUnreliableVertices = false;
-        
+
         // Pool of triangles to evaluate next
         SortedList<float, int> trianglePool = new SortedList<float, int>();
 
@@ -189,8 +221,6 @@ public class CurvatureFilter
 
         trianglePool.Add(getTriConsistency(max_consistency_triangle, ref ratios, ref meshInfo), 0);
 
-        bool doingUnreliableTriangles = false;
-        
         for(int count=0; count < 100000; count++)
         {
             //Stop if there are no availabl triangles
@@ -215,22 +245,26 @@ public class CurvatureFilter
             Vector3 pb = meshInfo.principalDirections[trib];
             Vector3 pc = meshInfo.principalDirections[tric];
 
-            for (int k = 0; k < 4; k+=1)
-                for (int l = 0; l < 4; l+=1)
-                    for (int m = 0; m < 4; m+=1)
+            for (int k = 0; k < 2; k+=1)
+                for (int l = 0; l < 2; l+=1)
+                    for (int m = 0; m < 2; m+=1)
                     {
                         // Do not change principal directions for frozen vertices
                         if(k != 0 && frozenTriangles[tria]) continue;
                         if(l != 0 && frozenTriangles[trib]) continue;
                         if(m != 0 && frozenTriangles[tric]) continue;
 
-                        Vector3 Di = Quaternion.AngleAxis(90*k, normals[tria]) * pa;
-                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib]) * pb;
-                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric]) * pc;
+                        //Vector3 Di = Quaternion.AngleAxis(180*k, normals[tria]) * pa;
+                        //Vector3 Dj = Quaternion.AngleAxis(180*l, normals[trib]) * pb;
+                        //Vector3 Dk = Quaternion.AngleAxis(180*m, normals[tric]) * pc;
+                        
+                        Vector3 Di = (-k*2+1) * pa;
+                        Vector3 Dj = (-l*2+1) * pb;
+                        Vector3 Dk = (-m*2+1) * pc;
 
-                        float my_consistency = Vector3.Dot(Di, Dj) * (1 - ratios[tria]*ratios[trib])
-                                               + Vector3.Dot(Dj, Dk) * (1 - ratios[trib]*ratios[tric])
-                                               + Vector3.Dot(Dk, Di) * (1 - ratios[tric]*ratios[tria]);
+                        float my_consistency = Vector3.Dot(Di, Dj)
+                                               + Vector3.Dot(Dj, Dk)
+                                               + Vector3.Dot(Dk, Di);
 
                         if (my_consistency > maxConsistency) {
                             maxConsistency = my_consistency;
@@ -245,9 +279,9 @@ public class CurvatureFilter
             
             //Debug.Log("indices:" + inda.ToString() + indb.ToString() + indc.ToString());
             //Debug.Log("max consistency:" + maxConsistency);
-            meshInfo.principalDirections[tria] = Quaternion.AngleAxis(90*inda, normals[tria])*meshInfo.principalDirections[tria];
-            meshInfo.principalDirections[trib] = Quaternion.AngleAxis(90*indb, normals[trib])*meshInfo.principalDirections[trib];
-            meshInfo.principalDirections[tric] = Quaternion.AngleAxis(90*indc, normals[tric])*meshInfo.principalDirections[tric];
+            meshInfo.principalDirections[tria] = (-inda*2+1)*meshInfo.principalDirections[tria];
+            meshInfo.principalDirections[trib] = (-indb*2+1)*meshInfo.principalDirections[trib];
+            meshInfo.principalDirections[tric] = (-indc*2+1)*meshInfo.principalDirections[tric];
 
             frozenTriangles[tria] = true;
             frozenTriangles[trib] = true;

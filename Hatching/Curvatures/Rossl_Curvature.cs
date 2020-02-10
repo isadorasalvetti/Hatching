@@ -19,7 +19,7 @@ public static class RosslCurvature {
     public static float[] ComputeCurvatureRatio(float[] k1, float[] k2) {
         if(k1 != null){
             float[] ratios = new float [k1.Length];
-            for(int i = 0; i < ratios.Length; i++ ) ratios[i] = k1[i] / k2[i]; //Minor / Major
+            for(int i = 0; i < ratios.Length; i++ ) ratios[i] = (k2[i]-k1[i]) / k2[i]; //Minor / Major
             return ratios;
         }
         Debug.Log("Curvature information has not been computed"); return new float[0];
@@ -189,7 +189,7 @@ public static class RosslCurvature {
         outData.k1[v] = (float)eigenValues.At(0).Real;
         outData.k2[v] = (float)eigenValues.At(1).Real;
         
-        if (Mathf.Abs(outData.k1[v]) < Mathf.Abs(outData.k2[v])) return;
+        if (outData.k1[v] < outData.k2[v]) return;
 
         swap(ref outData.k1[v], ref outData.k2[v]);
         swap(ref outData.d1[v], ref outData.d2[v]);
