@@ -76,7 +76,7 @@ public class HatchingCamera : MonoBehaviour
         Texture2D texture = RenderCamera();
 
         bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
+        //bitmap.Save(SceneSettings.saveHatchingPath + "NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
         
         Graphics.Blit(texture, cameraTexture, imageSpaceOutline);
         
@@ -84,7 +84,7 @@ public class HatchingCamera : MonoBehaviour
         texture.Apply();
         
         bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\Outline" + diff.ToString() + ".png", new PngEncoder());
+        //bitmap.Save(SceneSettings.saveHatchingPath + "Outline" + diff.ToString() + ".png", new PngEncoder());
         
         
         // Hatching
@@ -92,7 +92,7 @@ public class HatchingCamera : MonoBehaviour
         texture = RenderCamera();
         
         //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\PDImageSpace" + diff.ToString() + ".png", new PngEncoder());
+        //bitmap.Save(SceneSettings.saveHatchingPath + "PDImageSpace" + diff.ToString() + ".png", new PngEncoder());
         
         //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
         //bitmap = new Image<Rgba32>(texture.width, texture.height);
@@ -111,8 +111,7 @@ public class HatchingCamera : MonoBehaviour
         hatching.StartRandomSeed();
         hatching.DrawHatchings(bitmap);
         
-        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\test" + diff.ToString() + ".png", new PngEncoder());
-        //bitmap.Save("C:\\Users\\Isadora\\Documents\\_MyWork\\Papers\\Thesis\\test.png", new PngEncoder());
+        bitmap.Save(SceneSettings.saveHatchingPath + "test" + diff.ToString() + ".png", new PngEncoder());
         
         foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
     }

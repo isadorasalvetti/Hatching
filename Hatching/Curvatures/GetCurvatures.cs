@@ -34,6 +34,7 @@ public class GetCurvatures : MonoBehaviour
     }
 
     private void GetAllSmoothMeshes(out Mesh[] allSmoothMeshes, out List<List<int>>[] allMapsFromNew){
+        //Makes a copy of the mesh with all normals smoothed. 
         allSmoothMeshes = new Mesh[_meshes.Length];
         allMapsFromNew = new List<List<int>>[_meshes.Length];
         for (int m = 0; m < _meshes.Length; m++){
@@ -43,6 +44,7 @@ public class GetCurvatures : MonoBehaviour
     }
 
     public void ComputeCurvatureRossl(){
+        Debug.Log("--- Computing curvatures");
         Initialize();
         for (int m = 0; m < _meshes.Length; m++){
             RosslCurvature.ComputeCurvature(ref _meshInfos[m], out _curvatureDatas[m]);
@@ -50,6 +52,7 @@ public class GetCurvatures : MonoBehaviour
         ApplyPrincipalDirectios();
     }
 
+    /*
     public void AlignCurvatures(){
         if (!Initialize() || _meshInfos[0].principalDirections == null) {
             Debug.Log("Curvatures not computed");
@@ -66,6 +69,7 @@ public class GetCurvatures : MonoBehaviour
         }
         ApplyPrincipalDirectios();
     }
+    */
     
     public void OptimizePrincipalDirections(float reliabilityRatio)
     {
@@ -80,8 +84,11 @@ public class GetCurvatures : MonoBehaviour
                 Debug.Log("Principal directions not computed");
                 return;
             }
+            
             bool[] curvatureReliability = CurvatureFilter.GetReliability(meshInfo.curvatureRatios, reliabilityRatio);
+            //Debug.Log(CurvatureFilter.showArray(meshInfo.principalDirections));
             meshInfo.principalDirections = CurvatureFilter.MinimizeEnergy(meshInfo, curvatureReliability);
+            //Debug.Log(CurvatureFilter.showArray(meshInfo.principalDirections));
         }
         ApplyPrincipalDirectios();
     }
@@ -105,7 +112,6 @@ public class GetCurvatures : MonoBehaviour
     }
 
     public void ApplyPrincipalDirectios(bool align=true){
-        Debug.Log("Applied principal directions as colors");
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
             mesh.RecalculateNormals(0);
@@ -127,8 +133,8 @@ public class GetCurvatures : MonoBehaviour
                 
             if (align) CurvatureFilter.AlignDirections(newMeshInfo, false);
             mesh.colors = Array.ConvertAll(newVectors, j => new Color(j.x, j.y, j.z, 1));
-            
         }
+        Debug.Log("Applied principal directions as colors");
     }
 
     private Mesh GetSmoothMesh(Mesh mesh, out List<List<int>> mapToOld) {
@@ -170,12 +176,12 @@ public class GetCurvatures : MonoBehaviour
 
     public void ShowNormals(){
         foreach(MeshFilter meshFilter in GetComponentsInChildren<MeshFilter>()){
-                     Color[] colors = new Color[meshFilter.sharedMesh.colors.Length];
-                     for(int i = 0; i < meshFilter.sharedMesh.colors.Length; i++){
-                         Vector3 n = meshFilter.sharedMesh.normals[i];
-                         colors[i] = new Color(n[0], n[1], n[2], 1);
-                     }
-                     meshFilter.sharedMesh.colors = colors;
+             Color[] colors = new Color[meshFilter.sharedMesh.colors.Length];
+             for(int i = 0; i < meshFilter.sharedMesh.colors.Length; i++){
+                 Vector3 n = meshFilter.sharedMesh.normals[i];
+                 colors[i] = new Color(n[0], n[1], n[2], 1);
+             }
+             meshFilter.sharedMesh.colors = colors;
         }
     }
 
@@ -190,19 +196,11 @@ public class GetCurvatures : MonoBehaviour
             for (int i = 0; i < meshInfo.principalDirections.Length; i++) {
                 meshInfo.principalDirections[i] = new Vector3(1-meshInfo.curvatureRatios[i], 0, 0);
             }
-            ApplyPrincipalDirectios();
+            ApplyPrincipalDirectios(align:false);
         }
     }
 
-    float MaxCurvature(float[] curv) {
-            float max = 0;
-            foreach (var t in curv){
-                if (t>max) max = t;
-            }
-            return max;
-        }
-
-        public void RotatePrincipalDirections(float angle) {
+    public void RotatePrincipalDirections(float angle) {
             if (!Initialize()) {Debug.Log("Curvatures not computed"); return;}
             for (int m = 0; m < _meshInfos.Length; m++){
                 CurvatureFilter.RotateAllDirectios(ref _meshInfos[m].principalDirections, _meshInfos[m].mesh.normals, angle);

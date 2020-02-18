@@ -7,7 +7,7 @@ using UnityEngine;
 
 public class CurvatureFilter
 {
-    private static String showArray<T>(T[] arr) {
+    public static String showArray<T>(T[] arr) {
         return string.Join(", ", new List<T>(arr).ConvertAll(j => j.ToString()));
     }
 
@@ -37,7 +37,7 @@ public class CurvatureFilter
 
     public static bool[] GetReliability(float[] ratios, float minRatio) {
         bool[] directionIsReliable = new bool[ratios.Length];
-        for (int i = 0; i < ratios.Length; i++) directionIsReliable[i] = Mathf.Abs(ratios[i]) < minRatio;
+        for (int i = 0; i < ratios.Length; i++) directionIsReliable[i] = Mathf.Abs(ratios[i]) > minRatio;
         return directionIsReliable;
     }
 
@@ -140,7 +140,7 @@ public class CurvatureFilter
     */
     
     public static Vector3[] MinimizeEnergy(MeshInfo meshInfo, bool[] directionIsReliable){
-        Debug.Log("Start Minimization.");
+        Debug.Log("----- Start Minimization.");
         SetUpMinimizationData(meshInfo, directionIsReliable);
         ComputePhiTheta(meshInfo);
         alglib.minlbfgsstate lbfgs;
@@ -198,7 +198,7 @@ public class CurvatureFilter
     public static Vector3[] AlignDirections(MeshInfo meshInfo, bool connectivity)
     {
         Debug.Log("Aligning curvatures");
-        Debug.Log("Starting with" + showArray(meshInfo.principalDirections));
+        //Debug.Log("Starting with" + showArray(meshInfo.principalDirections));
 
         int[] triangles = meshInfo.mesh.triangles;
         bool[] frozenTriangles = new bool[meshInfo.mesh.vertices.Length];
@@ -290,7 +290,7 @@ public class CurvatureFilter
                 }
         }
         
-        Debug.Log("Finishing with" + showArray(meshInfo.principalDirections));
+        //Debug.Log("Finishing with" + showArray(meshInfo.principalDirections));
         return meshInfo.principalDirections;
     }
 
