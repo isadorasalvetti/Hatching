@@ -19,12 +19,16 @@ public static class RosslCurvature {
     public static float[] ComputeCurvatureRatio(float[] k1, float[] k2) {
         if(k1 != null){
             float[] ratios = new float [k1.Length];
-            for(int i = 0; i < ratios.Length; i++ ) ratios[i] = (k2[i]-k1[i]) / k2[i]; //Minor / Major
+            for(int i = 0; i < ratios.Length; i++ ) ratios[i] = Mathf.Abs(k1[i]) / Mathf.Abs(k2[i]); //Minor / Major
             return ratios;
         }
         Debug.Log("Curvature information has not been computed"); return new float[0];
     }
 
+    private static String showArray<T>(T[] arr) {
+        return string.Join(", ", new List<T>(arr).ConvertAll(j => j.ToString()));
+    }
+    
     public static void ComputeCurvature(ref MeshInfo meshInfo, out CurvatureData outData){
         int n = meshInfo.vertexCount;
         outData = new CurvatureData(n);
@@ -43,6 +47,7 @@ public static class RosslCurvature {
         }
 
         meshInfo.curvatureRatios = ComputeCurvatureRatio(outData.k1, outData.k2);
+        Debug.Log(showArray(meshInfo.curvatureRatios));
     }
 
     static Vector3 vectorToUnity(Vector<float> v){

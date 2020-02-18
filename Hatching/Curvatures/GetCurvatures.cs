@@ -62,7 +62,7 @@ public class GetCurvatures : MonoBehaviour
                 Debug.Log("Principal directions not computed");
                 return;
             }
-            _meshInfos[m].principalDirections = CurvatureFilter.AlignDirections(_meshInfos[m], _meshInfos[m].curvatureRatios, 0.5f);
+            _meshInfos[m].principalDirections = CurvatureFilter.AlignDirections(_meshInfos[m], true);
         }
         ApplyPrincipalDirectios();
     }
@@ -104,21 +104,30 @@ public class GetCurvatures : MonoBehaviour
         }
     }
 
-    public void ApplyPrincipalDirectios(){
+    public void ApplyPrincipalDirectios(bool align=true){
         Debug.Log("Applied principal directions as colors");
         for (int m = 0; m < _meshes.Length; m++){
             Mesh mesh = _meshes[m].sharedMesh;
-            Color[] newColors = new Color[mesh.vertices.Length];
-            Color[] curvatureColors = Array.ConvertAll(_meshInfos[m].principalDirections, j => new Color(j.x, j.y, j.z, 1));
+            mesh.RecalculateNormals(0);
+            Vector3[] newVectors = new Vector3[mesh.vertices.Length];
+            Vector3[] smoothedNormals = new Vector3[mesh.normals.Length];
 
             int displacement = 0;
-            for (int i = 0; i < curvatureColors.Length; i++){
+            for (int i = 0; i < _meshInfos[m].principalDirections.Length; i++){
                 for (int j = 0; j < _mapFromNew[m][i].Count; j++) {
                     displacement += j;
-                    newColors[_mapFromNew[m][i][j]] = curvatureColors[i];
+                    newVectors[_mapFromNew[m][i][j]] = _meshInfos[m].principalDirections[i];
+                    smoothedNormals[_mapFromNew[m][i][j]] = _meshInfos[m].mesh.normals[i];
                 }
-                mesh.colors = newColors;
             }
+            
+            mesh.normals = smoothedNormals;
+            MeshInfo newMeshInfo = new MeshInfo(mesh);
+            newMeshInfo.principalDirections = newVectors;
+                
+            if (align) CurvatureFilter.AlignDirections(newMeshInfo, false);
+            mesh.colors = Array.ConvertAll(newVectors, j => new Color(j.x, j.y, j.z, 1));
+            
         }
     }
 
@@ -152,7 +161,7 @@ public class GetCurvatures : MonoBehaviour
         }
 
         smoothMesh.triangles = triangles;
-        smoothMesh.RecalculateNormals();
+        smoothMesh.RecalculateNormals(180);
         //Debug.Log("New vertices: " + smoothMesh.vertices.Length.ToString() + ", Old vertices: " + mesh.vertices.Length.ToString());
         //Debug.Log("Faces: " + string.Join(", ", new List<int>(smoothMesh.triangles).ConvertAll(j => j.ToString())));
         //Debug.Log("Normal (sample): " + smoothMesh.normals[2].ToString() + " vs: " + mesh.normals[2].ToString());

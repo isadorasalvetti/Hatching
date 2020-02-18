@@ -24,7 +24,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Floats:
-    - _DepthThreshold: 0.066
-    - _NormalThreshold: 1.129
+    - _DepthThreshold: 0.757
+    - _NormalThreshold: 0.733
     - _Scale: 2.14
     m_Colors: []

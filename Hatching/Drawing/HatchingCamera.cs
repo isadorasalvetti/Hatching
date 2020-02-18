@@ -75,7 +75,7 @@ public class HatchingCamera : MonoBehaviour
         var cameraTexture = myCamera.targetTexture;
         Texture2D texture = RenderCamera();
 
-        //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
         //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
         
         Graphics.Blit(texture, cameraTexture, imageSpaceOutline);
@@ -84,7 +84,7 @@ public class HatchingCamera : MonoBehaviour
         texture.Apply();
         
         bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\Outline" + diff.ToString() + ".png", new PngEncoder());
+        //bitmap.Save("C:\\Users\\isadora.albrecht\\Documents\\Downloads\\Outline" + diff.ToString() + ".png", new PngEncoder());
         
         
         // Hatching

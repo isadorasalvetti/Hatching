@@ -9,7 +9,7 @@ public class Vector4Ex{
 
 public class Math2
 {
-    private static float PI = 3.14159265359f;
+    public static float PI = 3.14159265359f;
     
     public static void Swap<T>(ref T a1, ref T a2){
         T tmp = a1;

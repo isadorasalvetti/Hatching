@@ -19,7 +19,7 @@ public class ProcessHatching
     private int _gridSize = 50;
 
     private List<List<Vector2>> Lines = new List<List<Vector2>>(); //Stores line points, in order from start to end.
-    private List<List<Vector2>> NextLineCandidates = new List<List<Vector2>>(); //Stores line points, in order from start to end.
+    private List<List<Vector2>> NextLineCandidates = new List<List<Vector2>>(); //Candidates to seed next line.
     private List<Vector2>[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
     
     public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.8f,
@@ -120,15 +120,16 @@ public class ProcessHatching
                     direction = (direction * 2 - Vector2.one);
 
                     addPointToGrid(gridX, gridY, u, v);
-                    AddLine(new Vector2(u, v), direction);
-                    GetNextSeed();
+                    Vector2 oldDirection = Vector2.zero;
+                    AddLine(new Vector2(u, v), direction, ref oldDirection);
+                    GetNextSeed(oldDirection);
                 }
                 
             }
         }
     }
 
-    void GetNextSeed()
+    void GetNextSeed(Vector2 previousDirection)
     {
         if (Lines.Count > 1500) throw new Exception("Max number of lines reached");
         Vector2 testPoint = Vector2.zero;
@@ -165,8 +166,11 @@ public class ProcessHatching
                     {
                         direction = rg(pixelColor);
                         direction = (direction * 2 - Vector2.one).normalized;
-                        addPointToGrid(gridX, gridY, testPoint);
-                        AddLine(testPoint, direction);
+                        if (!(previousDirection==Vector2.zero)) AlignDirection(ref direction, previousDirection);
+                        if (!(direction == Vector2.zero)) {
+                            addPointToGrid(gridX, gridY, testPoint);
+                            AddLine(testPoint, direction, ref previousDirection);
+                        }
                     }
                 }
             }
@@ -176,7 +180,7 @@ public class ProcessHatching
         }
     }
 
-    void AddLine(Vector2 seed, Vector2 initialDirection)
+    void AddLine(Vector2 seed, Vector2 initialDirection, ref Vector2 oldLineDirection)
     {
         //Creates new line starting at seed.
         List<Vector2> line = new List<Vector2>();
@@ -193,6 +197,7 @@ public class ProcessHatching
                 else line.Insert(0, newPoint);
                 
                 if (direction == Vector2.zero) break;
+                oldLineDirection = direction;
             }
         }
 
@@ -200,7 +205,7 @@ public class ProcessHatching
             Lines.Add(line);
             NextLineCandidates.Add(line);
         }
-        
+
     }
 
     Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, int mult)
@@ -225,14 +230,32 @@ public class ProcessHatching
         
         Vector2 new_direction = rg(pixelColor);
         new_direction = (new_direction * 2 - Vector2.one).normalized;
-        
-        if (Vector2.Dot(direction, new_direction*mult) < 0.5) {
-            direction = Vector2.zero;
-        } else direction = new_direction;
 
+        AlignDirection(ref direction, new_direction);
         addPointToGrid(gridX, gridY, newPoint);
 
         return newPoint;
+    }
+
+    void AlignDirection(ref Vector2 direction, Vector2 new_direction){
+        Vector2 initDirection = direction; 
+        if (direction == Vector2.zero) return;
+        float dotDir = Vector2.Dot(direction, new_direction);
+        float cos45 = Mathf.Cos(Math2.PI / 4);
+        
+        
+        if (dotDir < -cos45) {
+            direction = -new_direction;
+        } else if (dotDir > -cos45 && dotDir < cos45) {
+            new_direction = Math2.rotateVec2(new_direction, Math2.PI/2);
+            if (Vector2.Dot(direction, new_direction) < -cos45) direction = -new_direction;
+            else if(Vector2.Dot(direction, new_direction) > cos45) direction = new_direction;
+            else direction = Vector2.zero;
+        } else if (dotDir > cos45) direction = new_direction;
+        else direction = Vector2.zero;
+        //Debug.Log(String.Format("Direction: {0}, initial new direction: {1}, new direction: {2}, initial dot dir:{3}, dot product:{4}",
+        //    initDirection, new_direction, direction, dotDir, Vector2.Dot(direction, initDirection)));
+        //    initDirection, new_direction, direction, dotDir, Vector2.Dot(direction, initDirection)));
     }
 
     Vector2 GetIntermediaryPoint(Vector2 first, Vector2 second){
@@ -264,7 +287,7 @@ public class ProcessHatching
                 for (int v = 0; v < line.Count; v++) pointFline[v] = new PointF(line[v].x, line[v].y);
                 //Debug.Log("Line: " + string.Join(", ",
                 //              new List<PointF>(pointFline).ConvertAll(j => j.ToString()).ToArray()));
-                bitmap.Mutate(x => x.DrawLines(colors[0], 1, pointFline));
+                bitmap.Mutate(x => x.DrawLines(colors[k], 1, pointFline));
             }
             k=(k+1)%5;
         }
