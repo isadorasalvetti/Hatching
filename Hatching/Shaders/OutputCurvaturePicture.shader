@@ -60,8 +60,7 @@
                 int samp = ((1-ndotl)*2 - _WhiteOffset);
                 float light = 1 - samp/2.0;
                 
-                i.color.xyz = normalize(i.color.xyz);
-                fixed2 curv_direction = i.color.xy;
+                fixed2 curv_direction = normalize(i.color.xy);
                 fixed4 col = fixed4(curv_direction*0.5 + 0.5, i.color.z, light);
                 return col;
             }

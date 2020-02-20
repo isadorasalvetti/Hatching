@@ -5,8 +5,6 @@ using UnityEngine;
 [CustomEditor(typeof(GetCurvatures))]
 public class ObjectBuilderEditor : Editor
 {
-    public float reliabilityRatio = 0.85f;
-    
     void GUILine( int i_height = 1 )
    {
        Rect rect = EditorGUILayout.GetControlRect(false, i_height );
@@ -24,12 +22,12 @@ public class ObjectBuilderEditor : Editor
         
         GUILayout.Label("Change");
         GUILine();
-        if (GUILayout.Button("Optimize Current Directions")) myScript.OptimizePrincipalDirections(reliabilityRatio);
+        if (GUILayout.Button("Optimize Current Directions")) myScript.OptimizePrincipalDirections(HatchingSettings.minRatio);
         else if(GUILayout.Button("Rotate all directions 90 degres")) myScript.RotatePrincipalDirections(90);
         
         GUILayout.Label("View");
         GUILine();
-        if(GUILayout.Button("Get optimization test values")) myScript.TestCurvatureOptimization(reliabilityRatio);
+        if(GUILayout.Button("Get optimization test values")) myScript.TestCurvatureOptimization(HatchingSettings.minRatio);
         else if(GUILayout.Button("Re-apply Directions")) myScript.ApplyPrincipalDirectios();
         else if(GUILayout.Button("Show Normals")) myScript.ShowNormals();
         else if(GUILayout.Button("View Ratios")) myScript.ShowRatios();

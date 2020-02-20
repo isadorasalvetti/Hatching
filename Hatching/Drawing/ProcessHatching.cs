@@ -166,7 +166,7 @@ public class ProcessHatching
                     {
                         direction = rg(pixelColor);
                         direction = (direction * 2 - Vector2.one).normalized;
-                        if (!(previousDirection==Vector2.zero)) AlignDirection(ref direction, previousDirection);
+                        if (!(previousDirection == Vector2.zero)) AlignDirection(ref direction, previousDirection);
                         if (!(direction == Vector2.zero)) {
                             addPointToGrid(gridX, gridY, testPoint);
                             AddLine(testPoint, direction, ref previousDirection);
@@ -239,23 +239,22 @@ public class ProcessHatching
 
     void AlignDirection(ref Vector2 direction, Vector2 new_direction){
         Vector2 initDirection = direction; 
-        if (direction == Vector2.zero) return;
+        if (new_direction == Vector2.zero) return;
         float dotDir = Vector2.Dot(direction, new_direction);
         float cos45 = Mathf.Cos(Math2.PI / 4);
-        
-        
-        if (dotDir < -cos45) {
+        float cos30 = Mathf.Cos(Math2.PI / 4);
+
+        if (dotDir < -cos30) {
             direction = -new_direction;
         } else if (dotDir > -cos45 && dotDir < cos45) {
             new_direction = Math2.rotateVec2(new_direction, Math2.PI/2);
-            if (Vector2.Dot(direction, new_direction) < -cos45) direction = -new_direction;
-            else if(Vector2.Dot(direction, new_direction) > cos45) direction = new_direction;
+            if (Vector2.Dot(direction, new_direction) < -cos30) direction = -new_direction;
+            else if(Vector2.Dot(direction, new_direction) > cos30) direction = new_direction;
             else direction = Vector2.zero;
-        } else if (dotDir > cos45) direction = new_direction;
+        } else if (dotDir > cos30) direction = new_direction;
         else direction = Vector2.zero;
-        //Debug.Log(String.Format("Direction: {0}, initial new direction: {1}, new direction: {2}, initial dot dir:{3}, dot product:{4}",
-        //    initDirection, new_direction, direction, dotDir, Vector2.Dot(direction, initDirection)));
-        //    initDirection, new_direction, direction, dotDir, Vector2.Dot(direction, initDirection)));
+        Debug.Log(String.Format("Direction: {0}, initial new direction: {1}, new direction: {2}, initial dot dir:{3}, dot product:{4}",
+            initDirection, new_direction, direction, dotDir, Vector2.Dot(direction, initDirection)));
     }
 
     Vector2 GetIntermediaryPoint(Vector2 first, Vector2 second){
