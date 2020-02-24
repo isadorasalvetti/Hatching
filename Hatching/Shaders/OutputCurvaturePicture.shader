@@ -61,7 +61,7 @@
                 float light = 1 - samp/2.0;
                 
                 fixed2 curv_direction = normalize(i.color.xy);
-                fixed4 col = fixed4(curv_direction*0.5 + 0.5, i.color.z, light);
+                fixed4 col = fixed4(curv_direction*0.5 + 0.5, i.color.z, 1);
                 return col;
             }
             ENDCG

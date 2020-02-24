@@ -83,33 +83,37 @@ public class HatchingCamera : MonoBehaviour
         texture.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
         texture.Apply();
         
-        bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        Image lineBitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
         //bitmap.Save(HatchingSettings.saveHatchingPath + "Outline" + diff.ToString() + ".png", new PngEncoder());
         
         
         // Hatching
         changeMaterials(principalDirections);
         texture = RenderCamera();
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
+        Texture2D textureAlt = RenderCamera();
+                
         
-        //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        //bitmap.Save(HatchingSettings.saveHatchingPath + "PDImageSpace" + diff.ToString() + ".png", new PngEncoder());
+        bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        bitmap.Save(HatchingSettings.saveHatchingPath + "PDImageSpace" + diff.ToString() + ".png", new PngEncoder());
+        bitmap = Image.Load<Rgba32>(textureAlt.EncodeToPNG());
+        bitmap.Save(HatchingSettings.saveHatchingPath + "PDImageSpaceAlt" + diff.ToString() + ".png", new PngEncoder());
         
-        //bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        //bitmap = new Image<Rgba32>(texture.width, texture.height);
+        bitmap = lineBitmap;
         
-        ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level: 0.8f);
+        ProcessHatching hatching = new ProcessHatching(texture, textureAlt, dSeparation: dSeparation, dTest: dTest, level:1.0f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
         hatching.DrawHatchings(bitmap);
 
-        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
+        //foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
         
-        texture = RenderCamera();
-        hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level: 0.3f);
-        Debug.Log("Drawing parallel lines.");
-        hatching.StartRandomSeed();
-        hatching.DrawHatchings(bitmap);
+        //texture = RenderCamera();
+        //hatching = new ProcessHatching(texture, textureAlt, dSeparation: dSeparation, dTest: dTest, level: 0.3f);
+        //Debug.Log("Drawing parallel lines.");
+        //hatching.StartRandomSeed();
+        //hatching.DrawHatchings(bitmap);
         
         bitmap.Save(HatchingSettings.saveHatchingPath + "test" + diff.ToString() + ".png", new PngEncoder());
         

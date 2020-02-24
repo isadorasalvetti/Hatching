@@ -13,19 +13,24 @@ using Image = SixLabors.ImageSharp.Image;
 public class ProcessHatching
 {
     private Texture2D _texture;
+    private Texture2D _altTexture;
     private float _dSeparation;
     private float _level;
     private float _dTest;
     private int _gridSize = 50;
 
     private List<List<Vector2>> Lines = new List<List<Vector2>>(); //Stores line points, in order from start to end.
-    private List<List<Vector2>> NextLineCandidates = new List<List<Vector2>>(); //Candidates to seed next line.
+    private List<Tuple<List<Vector2>, List<Vector2>>> NextLineCandidates = new List<Tuple<List<Vector2>, List<Vector2>>>(); //Candidates to seed next line.
     private List<Vector2>[,] PointGrid; //Stores points in a grid. Facilitate distance calculations
     
-    public ProcessHatching(Texture2D texture, float dSeparation = 0.01f, float dTest = 0.8f,
+    private List<Vector2> DebugPoints = new List<Vector2>();
+    private List<Vector2> DebugPointsLine = new List<Vector2>(); 
+    
+    public ProcessHatching(Texture2D texture, Texture2D altTexture, float dSeparation = 0.01f, float dTest = 0.8f,
         int gridSize = 0, float level = 1.0f){
         _level = level; // Used to signal which area should be hatched.
         _texture = texture;
+        _altTexture = altTexture;
         _dSeparation = (int)(dSeparation * _texture.width);
         _dSeparation = Mathf.Max(5, _dSeparation);
         _dTest = (int)(dTest * _dSeparation);
@@ -37,9 +42,12 @@ public class ProcessHatching
         
     }
     
-    bool isInvalidColor(Vector2 newPoint) {
-        Color col = readTexturePixel(_texture, (int)newPoint.x, (int)newPoint.y);
-        return col.b > 0.9f || col.a > _level;
+    bool isInvalidColor(Vector2 newPoint, bool alt=false){
+        Texture2D texture;
+        if (!alt) texture = _texture;
+        else texture = _altTexture;
+        Color col = readTexturePixel(texture, (int)newPoint.x, (int)newPoint.y);
+        return col.a > _level || col.b > 0.9f;
         return Mathf.Abs(col.r) < Single.Epsilon && Mathf.Abs(col.g) < Single.Epsilon;
     }
 
@@ -54,21 +62,17 @@ public class ProcessHatching
         return newPoint.x < 0 || newPoint.y < 0 || newPoint.x > _texture.width || newPoint.y > _texture.height;
     }
     
-    void addPointToGrid(int gridX, int gridY, Vector2 point){
+    void addPointToGrid(Vector2 point){
+        int gridX, gridY; getGridCoords(point, out gridX, out gridY);
         if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
         PointGrid[gridX, gridY].Add(point);
     }
-    
+
     void addPointToGrid(int gridX, int gridY, float x, float y){
         if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
         PointGrid[gridX, gridY].Add(new Vector2(x, y));
     }
-    
-    void addPointToGrid(int gridX, int gridY, Vector3 point){
-        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
-        PointGrid[gridX, gridY].Add(point);
-    }
-    
+
     void getGridCoords(float x, float y, out int gridX, out int gridY){
         gridX = (int) (x / (_dSeparation));
         gridY = (int) (y / (_dSeparation));
@@ -122,14 +126,15 @@ public class ProcessHatching
                     addPointToGrid(gridX, gridY, u, v);
                     Vector2 oldDirection = Vector2.zero;
                     AddLine(new Vector2(u, v), direction, ref oldDirection);
-                    GetNextSeed(oldDirection);
+                    GetNextSeed();
+                    return;
                 }
                 
             }
         }
     }
 
-    void GetNextSeed(Vector2 previousDirection)
+    void GetNextSeed()
     {
         if (Lines.Count > 1500) throw new Exception("Max number of lines reached");
         Vector2 testPoint = Vector2.zero;
@@ -137,12 +142,14 @@ public class ProcessHatching
 
         while (NextLineCandidates.Count > 0)
         {
-            List<Vector2> line = NextLineCandidates[0];
+            List<Vector2> line = NextLineCandidates[0].Item1;
+            List<Vector2> directions = NextLineCandidates[0].Item2;
             int[] mults = {1, -1};
             foreach (int mult in mults)
             {
-                foreach (Vector2 point in line)
-                {
+                for(int i = 0; i < line.Count; i++) {
+                    Vector2 point = line[i];
+                    Vector2 previousDirection = directions[i];
                     testPoint = point + new Vector2(_dSeparation, _dSeparation) * mult;
                     if (testPoint.x < 0 || testPoint.y < 0 || testPoint.x > _texture.width ||
                         testPoint.y > _texture.height) continue;
@@ -156,8 +163,7 @@ public class ProcessHatching
                     getGridCoords(testPoint, out gridX, out gridY);
                     if (PointGrid[gridX, gridY] != null)
                         foreach (Vector3 comparePoint in getSurroudingPoints(gridX, gridY))
-                            if ((testPoint3 - comparePoint).magnitude < _dTest)
-                            {
+                            if ((testPoint3 - comparePoint).magnitude < _dTest) {
                                 validGrid = false;
                                 break;
                             }
@@ -166,17 +172,16 @@ public class ProcessHatching
                     {
                         direction = rg(pixelColor);
                         direction = (direction * 2 - Vector2.one).normalized;
-                        if (!(previousDirection == Vector2.zero)) AlignDirection(ref direction, previousDirection);
-                        if (!(direction == Vector2.zero)) {
-                            addPointToGrid(gridX, gridY, testPoint);
-                            AddLine(testPoint, direction, ref previousDirection);
-                        }
+                        if (!(previousDirection == Vector2.zero)) 
+                            if (AlignDirection(ref direction, previousDirection, testPoint, 0.8f, DebugPoints)){
+                                addPointToGrid(testPoint);
+                                AddLine(testPoint, direction, ref previousDirection);
+                                break;
+                            }
                     }
                 }
             }
-            
             NextLineCandidates.RemoveAt(0);
-            
         }
     }
 
@@ -184,17 +189,26 @@ public class ProcessHatching
     {
         //Creates new line starting at seed.
         List<Vector2> line = new List<Vector2>();
+        List<Vector2> lineDirections = new List<Vector2>();
+        
         line.Add(seed);
+        lineDirections.Add(initialDirection);
         foreach (int mult in new int[2]{1, -1}){
             Vector2 direction = initialDirection;
             Vector2 newPoint = seed;
             for (int i = 0; i < 2000; i++)
             {
                 direction *= mult;
-                newPoint = GetNextPoint(newPoint, ref direction, mult);
+                newPoint = GetNextPoint(newPoint, ref direction, oldLineDirection);
                 if (newPoint == Vector2.zero) break;
-                if (mult > 0) line.Add(newPoint);
-                else line.Insert(0, newPoint);
+                if (mult > 0) {
+                    line.Add(newPoint);
+                    lineDirections.Add(direction);
+                }
+                else {
+                    line.Insert(0, newPoint);
+                    lineDirections.Insert(0, direction);
+                }
                 
                 if (direction == Vector2.zero) break;
                 oldLineDirection = direction;
@@ -203,64 +217,127 @@ public class ProcessHatching
 
         if (line.Count > 2) {
             Lines.Add(line);
-            NextLineCandidates.Add(line);
+            NextLineCandidates.Add(new Tuple<List<Vector2>, List<Vector2>>(line, lineDirections));
         }
 
     }
 
-    Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, int mult)
+    Vector2 SamplePixelColorFromTexture(Texture2D texture, Vector2 point){
+        Color pixelColor =  readTexturePixel(texture, (int)point.x, (int)point.y);
+        Vector2 new_direction = rg(pixelColor);
+        new_direction = (new_direction * 2 - Vector2.one).normalized;
+        return new_direction;
+    }
+
+    Vector2 GetNextPoint(Vector2 previousPoint, ref Vector2 direction, Vector2 previousDirection, bool repeat=true)
     {
         //Gets next valid point for a line
-        Vector2 newPoint = previousPoint + (0.75f * _dSeparation) * direction;
+        Vector2 newPoint = previousPoint + _dSeparation * direction;
 
         //Reject points outside of image and finds adequate point in between.
         if (isPositionOutTexture(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
-        Color pixelColor =  readTexturePixel(_texture, (int)newPoint.x, (int)newPoint.y);
         if (isInvalidColor(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
-
+        
         // Stop and return if no valid point was found
         if(newPoint == Vector2.zero) return newPoint;
+        if (!CheckSurroundingPoints(newPoint, previousPoint)) return Vector2.zero;
 
-        int gridX, gridY; getGridCoords(newPoint, out gridX, out gridY);
-        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
-        foreach(Vector2 comparePoint in getSurroudingPoints(gridX, gridY)){
-            if (comparePoint != previousPoint)
-                if ((newPoint - comparePoint).magnitude < _dTest) return new Vector2();
-        }
+        Vector2 new_direction = SamplePixelColorFromTexture(_texture, newPoint);
+
+        if (!AlignDirection(ref direction, new_direction, newPoint, 0.9f, DebugPointsLine)) 
+            if (repeat) {
+                Vector2 approximatedDirection = direction + (direction - previousDirection);
+                newPoint = GetNextPoint(newPoint, ref approximatedDirection, previousDirection, false);
+                direction = approximatedDirection;
+            }
+            else return Vector2.zero;
         
-        Vector2 new_direction = rg(pixelColor);
-        new_direction = (new_direction * 2 - Vector2.one).normalized;
-
-        AlignDirection(ref direction, new_direction);
-        addPointToGrid(gridX, gridY, newPoint);
+        addPointToGrid(newPoint);
 
         return newPoint;
     }
 
-    void AlignDirection(ref Vector2 direction, Vector2 new_direction){
-        Vector2 initDirection = direction; 
-        if (new_direction == Vector2.zero) return;
-        float dotDir = Vector2.Dot(direction, new_direction);
-        float cos45 = Mathf.Cos(Math2.PI / 4);
-        float cos30 = Mathf.Cos(Math2.PI / 4);
+    bool CheckSurroundingPoints(Vector2 newPoint, Vector2 previousPoint){
+        int gridX, gridY; getGridCoords(newPoint, out gridX, out gridY);
+        if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
+        foreach(Vector2 comparePoint in getSurroudingPoints(gridX, gridY)){
+            if (comparePoint != previousPoint)
+                if ((newPoint - comparePoint).magnitude < _dTest) {
+                    DebugPoints.Add(newPoint);
+                    return false;
+                }
+        }
 
-        if (dotDir < -cos30) {
-            direction = -new_direction;
-        } else if (dotDir > -cos45 && dotDir < cos45) {
-            new_direction = Math2.rotateVec2(new_direction, Math2.PI/2);
-            if (Vector2.Dot(direction, new_direction) < -cos30) direction = -new_direction;
-            else if(Vector2.Dot(direction, new_direction) > cos30) direction = new_direction;
-            else direction = Vector2.zero;
-        } else if (dotDir > cos30) direction = new_direction;
-        else direction = Vector2.zero;
-        Debug.Log(String.Format("Direction: {0}, initial new direction: {1}, new direction: {2}, initial dot dir:{3}, dot product:{4}",
-            initDirection, new_direction, direction, dotDir, Vector2.Dot(direction, initDirection)));
+        return true;
+    }
+
+    Vector2 alignVectorWith(Vector2 toAlign, Vector2 reference){
+        if (Vector2.Dot(toAlign, reference) < 0) {
+            return -toAlign;
+        }
+        return toAlign;
+    }
+
+    Vector2 FindBestDirection(Vector2 direction, Vector2 new_direction, Vector2 samplePoint){
+        Vector2 new_direction_alt = new Vector2();
+        float cosDiff = Vector2.Dot(direction, new_direction);
+        float cosDiff_alt = 0;
+        if (Mathf.Abs(cosDiff) < Mathf.Cos((float)Math.PI/4)) {
+            new_direction_alt = SamplePixelColorFromTexture(_altTexture, samplePoint);
+            cosDiff_alt = Vector2.Dot(direction, new_direction_alt);
+        }
+
+        if (Mathf.Abs(cosDiff) > Mathf.Abs(cosDiff_alt)) return new_direction;
+        return new_direction_alt;
+    }
+
+    bool AlignDirection(ref Vector2 direction, Vector2 new_direction, Vector2 samplePoint, float tolerance, List<Vector2> MyDebugList){
+        if (new_direction == Vector2.zero) return false;
+//
+//        if (Mathf.Abs(cosDiff) >= Mathf.Cos(angleThreshold)) {
+//            direction = alignVectorWith(new_direction, direction);
+//        } else {
+//            // use orthogonal direction
+//            new_direction = rg(readTexturePixel(_altTexture, (int) samplePoint.x, (int) samplePoint.y));
+//            new_direction = (new_direction * 2 - Vector2.one).normalized;
+//            
+//            float cosDiffOrtho = Vector2.Dot(direction, new_direction);
+//            
+//            if (Mathf.Abs(cosDiffOrtho) >= Mathf.Cos(angleThreshold)) {
+//                Debug.Log(string.Format("====== Rotated coss: {0} ", cosDiffOrtho));
+//                direction = alignVectorWith(new_direction, direction);
+//            }
+//            else {
+//                Debug.Log(string.Format("------- Rejected: {0} ", cosDiffOrtho));
+//                direction = Vector2.zero;
+//            }
+//        }
+
+
+        new_direction = FindBestDirection(direction, new_direction, samplePoint);
+        float cosDiff = Vector2.Dot(direction, new_direction);
+
+        if (cosDiff < 0) {
+            //Debug.Log(string.Format("++++++++ Flipped: {0} ", cosDiff));
+            new_direction = -new_direction;
+        }
+        
+        if (Mathf.Abs(cosDiff) < tolerance) {
+            Debug.Log(string.Format("------- Rejected: {0}, by {1} ", cosDiff, tolerance));
+            MyDebugList.Add(samplePoint);
+            return false;
+        }
+
+        direction = new_direction;
+        return true;
+        //Debug.Log(string.Format("Final coss: {0} ", cosDiff));
     }
 
     Vector2 GetIntermediaryPoint(Vector2 first, Vector2 second){
         //gets last valid point between fist and second points.
-        Vector2 direction = second - first;
-        Vector2 pointToCheck = first + direction/10;
+        Vector2 direction = (second - first)/10;
+        if (direction.magnitude < 0.00001f) return Vector2.zero;
+        Vector2 pointToCheck = first + direction;
         Vector2 lastPointFound = Vector2.zero;
         for (int i = 0; i < 10 ; i++){
             if(isPositionOutTexture(pointToCheck) || isInvalidColor(pointToCheck)){
@@ -272,7 +349,7 @@ public class ProcessHatching
         return lastPointFound;
     }
     
-    Rgba32[] colors = {Rgba32.Black, Rgba32.Blue, Rgba32.Red, Rgba32.Yellow, Rgba32.Green};
+    Rgba32[] colors = {Rgba32.Black, Rgba32.Blue, Rgba32.Purple, Rgba32.Yellow, Rgba32.Green};
     public void DrawHatchings(Image bitmap)
     {
         Debug.Log("Drawing Lines");
@@ -290,7 +367,18 @@ public class ProcessHatching
             }
             k=(k+1)%5;
         }
-        
+
+        DrawDebug(bitmap, DebugPoints, Rgba32.Red);
+        DrawDebug(bitmap, DebugPointsLine, Rgba32.DarkRed);
+    }
+
+    private void DrawDebug(Image bitmap, List<Vector2> list, Rgba32 color){
+        if (list.Count > 2) {
+            for (int v = 0; v < list.Count; v++) {
+                PointF point = new PointF(list[v].x, list[v].y);
+                bitmap.Mutate(x => x.Draw(color, 1, new RectangleF(point, new SizeF(1, 1))));
+            }
+        }
     }
 
     Vector2 rg(Color color)

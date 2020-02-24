@@ -165,7 +165,7 @@ public class CurvatureFilter
     public static Vector3[] getNewVectors(double[] solutionTheta){
         Vector3[] filteredCurvatures = new Vector3[_mesh.vertexCount];
         for(int i=0; i< _mesh.vertexCount; i++){
-            float degrees = Math2.radToDegree((float) 1.5);
+            float degrees = Math2.radToDeg((float) 1.5);
             filteredCurvatures[i] = Quaternion.AngleAxis(degrees, _mesh.normals[i])*_ti[i];
         }
         return filteredCurvatures;
@@ -255,9 +255,9 @@ public class CurvatureFilter
                         Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib]) * pb;
                         Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric]) * pc;
 
-                        float my_consistency = Vector3.Dot(Di, Dj)
-                                               + Vector3.Dot(Dj, Dk)
-                                               + Vector3.Dot(Dk, Di);
+                        float my_consistency = (Vector3.Dot(Di, Dj))
+                                               +(Vector3.Dot(Dj, Dk))
+                                               +(Vector3.Dot(Dk, Di));
 
                         if (my_consistency > maxConsistency + 0.05f) {
                             maxConsistency = my_consistency;

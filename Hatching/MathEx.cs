@@ -26,7 +26,8 @@ public class Math2
         return cross_P;
     }
 
-    public static float radToDegree(float rad) { return rad * (180.0f / PI); }
+    public static float radToDeg(float rad) { return rad * (180.0f / PI); }
+    public static float degToRad(float deg) { return deg * PI / 180.0f; }
 
     public static Vector2 rotateVec2 (Vector2 vector, float angle)
     {
