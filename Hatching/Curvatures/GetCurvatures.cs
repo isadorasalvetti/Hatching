@@ -206,7 +206,7 @@ public class GetCurvatures : MonoBehaviour
                 CurvatureFilter.RotateAllDirectios(ref _meshInfos[m].principalDirections, _meshInfos[m].mesh.normals, angle);
             }
             ApplyPrincipalDirectios();
-        }
+    }
 
         public void RotateVertexColors() {
             foreach (MeshFilter meshFilter in GetComponentsInChildren<MeshFilter>()) {

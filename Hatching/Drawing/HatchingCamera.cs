@@ -92,13 +92,17 @@ public class HatchingCamera : MonoBehaviour
         texture = RenderCamera();
         foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
         Texture2D textureAlt = RenderCamera();
-                
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
+        Texture2D textureAlt2 = RenderCamera();
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
+        Texture2D textureAlt3 = RenderCamera();
         
+        // TODO: need to use all images!
         bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        bitmap.Save(HatchingSettings.saveHatchingPath + "PDImageSpace" + diff.ToString() + ".png", new PngEncoder());
         bitmap = Image.Load<Rgba32>(textureAlt.EncodeToPNG());
-        bitmap.Save(HatchingSettings.saveHatchingPath + "PDImageSpaceAlt" + diff.ToString() + ".png", new PngEncoder());
-        
+        bitmap = Image.Load<Rgba32>(textureAlt2.EncodeToPNG());
+        bitmap = Image.Load<Rgba32>(textureAlt3.EncodeToPNG());
+
         bitmap = lineBitmap;
         
         ProcessHatching hatching = new ProcessHatching(texture, textureAlt, dSeparation: dSeparation, dTest: dTest, level:1.0f);

@@ -302,8 +302,7 @@ public class CurvatureFilter
         return (vec - (Vector3.Dot(vec, normal)) * normal).normalized;           
     }
 
-    public static void RotateAllDirectios(ref Vector3[] directions, Vector3[] normals, float angle)
-    {
+    public static void RotateAllDirectios(ref Vector3[] directions, Vector3[] normals, float angle) {
         for (int i = 0; i < directions.Length; i++) directions[i] = Quaternion.AngleAxis(angle, normals[i]) * directions[i];
     }
 
