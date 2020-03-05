@@ -12,8 +12,7 @@ using Image = SixLabors.ImageSharp.Image;
 
 public class ProcessHatching
 {
-    private Texture2D _texture;
-    private Texture2D _altTexture;
+    private Texture2D[] _textures;
     private float _dSeparation;
     private float _level;
     private float _dTest;
@@ -26,26 +25,23 @@ public class ProcessHatching
     private List<Vector2> DebugPoints = new List<Vector2>();
     private List<Vector2> DebugPointsLine = new List<Vector2>();
     
-    public ProcessHatching(Texture2D texture, Texture2D altTexture, float dSeparation = 0.01f, float dTest = 0.8f,
+    public ProcessHatching(Texture2D[] texture, float dSeparation = 0.01f, float dTest = 0.8f,
         int gridSize = 0, float level = 1.0f){
         _level = level; // Used to signal which area should be hatched.
-        _texture = texture;
-        _altTexture = altTexture;
-        _dSeparation = (int)(dSeparation * _texture.width);
+        _textures = texture;
+        _dSeparation = (int)(dSeparation * _textures[0].width);
         _dSeparation = Mathf.Max(5, _dSeparation);
         _dTest = (int)(dTest * _dSeparation);
         _dTest = Mathf.Max(3, _dTest);
         if (gridSize > 0) _gridSize = gridSize;
 
-        PointGrid = new List<Vector2>[(int)(_texture.width/(_dSeparation))+1, (int)(_texture.height/(_dSeparation))+1];
-        int testX, testY; getGridCoords(_texture.width, _texture.height, out testX, out testY);
+        PointGrid = new List<Vector2>[(int)(_textures[0].width/(_dSeparation))+1, (int)(_textures[0].height/(_dSeparation))+1];
+        int testX, testY; getGridCoords(_textures[0].width, _textures[0].height, out testX, out testY);
         
     }
     
-    bool isInvalidColor(Vector2 newPoint, bool alt=false){
-        Texture2D texture;
-        if (!alt) texture = _texture;
-        else texture = _altTexture;
+    bool isInvalidColor(Vector2 newPoint, int lookingIndex){
+        Texture2D texture = _textures[lookingIndex];
         Color col = readTexturePixel(texture, (int)newPoint.x, (int)newPoint.y);
         return col.a > _level || col.b > 0.9f;
         return Mathf.Abs(col.r) < Single.Epsilon && Mathf.Abs(col.g) < Single.Epsilon;
@@ -59,7 +55,7 @@ public class ProcessHatching
     }
 
     bool isPositionOutTexture(Vector2 newPoint) {
-        return newPoint.x < 0 || newPoint.y < 0 || newPoint.x > _texture.width || newPoint.y > _texture.height;
+        return newPoint.x < 0 || newPoint.y < 0 || newPoint.x > _textures[0].width || newPoint.y > _textures[0].height;
     }
     
     void addPointToGrid(Vector2 point){
@@ -98,12 +94,12 @@ public class ProcessHatching
         // Looks for a pixel with valid curvature in image.
 
         Debug.Log("Looking for seeds");
-        for (int u = 0; u < _texture.width; u += _gridSize)
-        for (int v = 0; v < _texture.height; v += _gridSize)
+        for (int u = 0; u < _textures[0].width; u += _gridSize)
+        for (int v = 0; v < _textures[0].height; v += _gridSize)
         {
             Vector2 testPoint = new Vector2(u, v);
-            Color pixelColor =  readTexturePixel(_texture, u, v);
-            if (!isInvalidColor(new Vector2(u, v)))
+            Color pixelColor =  readTexturePixel(_textures[0], u, v);
+            if (!isInvalidColor(new Vector2(u, v), 0))
             {
                 bool skip = false;
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
@@ -117,8 +113,7 @@ public class ProcessHatching
                 if (!skip) {
                     Vector2 direction = rg(pixelColor);
                     direction = (direction * 2 - Vector2.one);
-                    Vector2 oldDirection = Vector2.zero;
-                    AddLine(new Vector2(u, v), direction, ref oldDirection);
+                    AddLine(new Vector2(u, v), direction);
                     GetNextSeed();
                     return;
                 }
@@ -144,19 +139,19 @@ public class ProcessHatching
                     Vector2 point = line[i];
                     Vector2 previousDirection = directions[i];
                     testPoint = point + mult * _dSeparation * Math2.rotateVec2(previousDirection, 90);
-                    if (testPoint.x < 0 || testPoint.y < 0 || testPoint.x > _texture.width ||
-                        testPoint.y > _texture.height) continue;
-                    Color pixelColor =  readTexturePixel(_texture, (int)testPoint.x, (int)testPoint.y);
+                    if (testPoint.x < 0 || testPoint.y < 0 || testPoint.x > _textures[0].width ||
+                        testPoint.y > _textures[0].height) continue;
+                    Color pixelColor =  readTexturePixel(_textures[0], (int)testPoint.x, (int)testPoint.y);
 
                     direction = rg(pixelColor);
                     direction = (direction * 2 - Vector2.one).normalized;
                     
                     if (CheckSurroundingPoints(testPoint, direction))
-                        if (!isInvalidColor(testPoint))
+                        if (!isInvalidColor(testPoint, 0))
                         {
                             if (!(previousDirection == Vector2.zero)) 
-                                if (AlignDirection(ref direction, previousDirection, testPoint, 0.8f)){
-                                    AddLine(testPoint, direction, ref previousDirection);
+                                if (!(FindBestDirection(previousDirection, testPoint, 0.9f) == Vector2.zero)){
+                                    AddLine(testPoint, direction);
                                 }
                         }
                 }
@@ -165,7 +160,7 @@ public class ProcessHatching
         }
     }
 
-    void AddLine(Vector2 seed, Vector2 initialDirection, ref Vector2 oldLineDirection)
+    void AddLine(Vector2 seed, Vector2 initialDirection)
     {
         //Creates new line starting at seed.
         List<Vector2> line = new List<Vector2>();
@@ -175,7 +170,7 @@ public class ProcessHatching
         lineDirections.Add(initialDirection);
         foreach (int mult in new int[2]{1, -1}){
             Vector2 direction = initialDirection*mult;
-            oldLineDirection = initialDirection*mult;
+            Vector2 oldLineDirection = initialDirection*mult;
             Vector2 newPoint = seed;
             for (int i = 0; i < 1000; i++)
             {
@@ -221,15 +216,15 @@ public class ProcessHatching
 
         //Reject points outside of image and finds adequate point in between.
         if (isPositionOutTexture(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
-        if (isInvalidColor(newPoint)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
-        
-        // Stop and return if no valid point was found
-        if(newPoint == Vector2.zero) return newPoint;
-
-        Vector2 new_direction = SamplePixelColorFromTexture(_texture, newPoint);
-
-        if (!AlignDirection(ref direction, new_direction, newPoint, 0.95f)) 
+        if (isInvalidColor(newPoint, 0)) newPoint = GetIntermediaryPoint(previousPoint, newPoint);
+        if (!CheckSurroundingPoints(newPoint, direction)) {
             return Vector2.zero;
+        }
+        
+        Vector2 new_direction = FindBestDirection(direction, newPoint, 0.95f);
+        
+        // Stop and return if no valid point or direction was found
+        if(newPoint == Vector2.zero || new_direction == Vector2.zero) {return newPoint;}
 //            if (repeat) {
 //                Vector2 change = (direction - previousDirection);
 //                Vector2 approximatedDirection = (direction + change).normalized;
@@ -239,10 +234,7 @@ public class ProcessHatching
 //            }
 //            else return Vector2.zero;
 
-        if (!CheckSurroundingPoints(newPoint, direction)) {
-            return Vector2.zero;
-        }
-
+        direction = new_direction;
         return newPoint;
     }
 
@@ -258,39 +250,16 @@ public class ProcessHatching
         return true;
     }
 
-    Vector2 FindBestDirection(Vector2 direction, Vector2 new_direction, Vector2 samplePoint){
-        Vector2 new_direction_alt = new Vector2();
-        float cosDiff = Vector2.Dot(direction, new_direction);
-        float cosDiff_alt = 0;
-        if (Mathf.Abs(cosDiff) < Mathf.Cos((float)Math.PI/4)) {
-            new_direction_alt = SamplePixelColorFromTexture(_altTexture, samplePoint).normalized;
-            cosDiff_alt = Vector2.Dot(direction, new_direction_alt);
+    Vector2 FindBestDirection(Vector2 direction, Vector2 samplePoint, float cutOff = -1){
+        if (cutOff < 0) cutOff = Mathf.Cos((float) Math.PI / 4);
+        for (int i = 0; i < 4; i++) {
+            Vector2 newDirection = SamplePixelColorFromTexture(_textures[i], samplePoint);
+            float cosDiff = Vector2.Dot(direction, newDirection);
+            if (cosDiff > cutOff) {
+                return newDirection;
+            }
         }
-
-        if (Mathf.Abs(cosDiff) > Mathf.Abs(cosDiff_alt)) return new_direction;
-        return new_direction_alt;
-    }
-
-    bool AlignDirection(ref Vector2 direction, Vector2 new_direction, Vector2 samplePoint, float tolerance){
-        if (new_direction == Vector2.zero) return false;
-
-        new_direction = FindBestDirection(direction, new_direction, samplePoint);
-        float cosDiff = Vector2.Dot(direction, new_direction);
-
-        if (cosDiff < 0) {
-            //Debug.Log(string.Format("++++++++ Flipped: {0} ", cosDiff));
-            DebugPoints.Add(samplePoint);
-            new_direction = -new_direction;
-        }
-        
-        direction = new_direction;
-        
-        if (Mathf.Abs(cosDiff) < tolerance) {
-            Debug.Log(string.Format("------- Rejected: {0}, by {1} ", cosDiff, tolerance));
-            return false;
-        }
-        return true;
-        //Debug.Log(string.Format("Final coss: {0} ", cosDiff));
+        return Vector2.zero;
     }
 
     Vector2 GetIntermediaryPoint(Vector2 first, Vector2 second){
@@ -300,7 +269,7 @@ public class ProcessHatching
         Vector2 pointToCheck = first + direction;
         Vector2 lastPointFound = Vector2.zero;
         for (int i = 0; i < 10 ; i++){
-            if(isPositionOutTexture(pointToCheck) || isInvalidColor(pointToCheck)){
+            if(isPositionOutTexture(pointToCheck) || isInvalidColor(pointToCheck, 0)){
                 return lastPointFound;
             }
             pointToCheck = pointToCheck + direction/10;

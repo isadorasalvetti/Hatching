@@ -73,39 +73,35 @@ public class HatchingCamera : MonoBehaviour
         // Outline
         changeMaterials(normalsNDepth);
         var cameraTexture = myCamera.targetTexture;
-        Texture2D texture = RenderCamera();
+        Texture2D textureOutline = RenderCamera();
 
-        bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        bitmap = Image.Load<Rgba32>(textureOutline.EncodeToPNG());
         //bitmap.Save(HatchingSettings.saveHatchingPath + "NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
         
-        Graphics.Blit(texture, cameraTexture, imageSpaceOutline);
+        Graphics.Blit(textureOutline, cameraTexture, imageSpaceOutline);
         
-        texture.ReadPixels(new Rect(0, 0, texture.width, texture.height), 0, 0);
-        texture.Apply();
+        textureOutline.ReadPixels(new Rect(0, 0, textureOutline.width, textureOutline.height), 0, 0);
+        textureOutline.Apply();
         
-        Image lineBitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
+        Image lineBitmap = Image.Load<Rgba32>(textureOutline.EncodeToPNG());
         //bitmap.Save(HatchingSettings.saveHatchingPath + "Outline" + diff.ToString() + ".png", new PngEncoder());
         
         
         // Hatching
         changeMaterials(principalDirections);
-        texture = RenderCamera();
-        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
-        Texture2D textureAlt = RenderCamera();
-        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
-        Texture2D textureAlt2 = RenderCamera();
-        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
-        Texture2D textureAlt3 = RenderCamera();
-        
-        // TODO: need to use all images!
-        bitmap = Image.Load<Rgba32>(texture.EncodeToPNG());
-        bitmap = Image.Load<Rgba32>(textureAlt.EncodeToPNG());
-        bitmap = Image.Load<Rgba32>(textureAlt2.EncodeToPNG());
-        bitmap = Image.Load<Rgba32>(textureAlt3.EncodeToPNG());
+        Texture2D[] texture = new Texture2D[4];
+            
+        texture[0] = RenderCamera();
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors 90 degrees
+        texture[1] = RenderCamera();
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors 90 degrees
+        texture[2] = RenderCamera();
+        foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors 90 degrees
+        texture[3] = RenderCamera();
 
         bitmap = lineBitmap;
         
-        ProcessHatching hatching = new ProcessHatching(texture, textureAlt, dSeparation: dSeparation, dTest: dTest, level:1.0f);
+        ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level:1.0f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
