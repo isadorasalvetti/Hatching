@@ -76,7 +76,7 @@ public class HatchingCamera : MonoBehaviour
         Texture2D textureOutline = RenderCamera();
 
         bitmap = Image.Load<Rgba32>(textureOutline.EncodeToPNG());
-        //bitmap.Save(HatchingSettings.saveHatchingPath + "NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
+        bitmap.Save(HatchingSettings.saveHatchingPath + "NormalsAndDepth" + diff.ToString() + ".png", new PngEncoder());
         
         Graphics.Blit(textureOutline, cameraTexture, imageSpaceOutline);
         
@@ -115,6 +115,7 @@ public class HatchingCamera : MonoBehaviour
         //hatching.StartRandomSeed();
         //hatching.DrawHatchings(bitmap);
         
+        Debug.Log(HatchingSettings.saveHatchingPath + "test" + diff.ToString() + ".png");
         bitmap.Save(HatchingSettings.saveHatchingPath + "test" + diff.ToString() + ".png", new PngEncoder());
         
         foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors

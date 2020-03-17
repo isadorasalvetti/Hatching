@@ -76,7 +76,7 @@ public class ProcessHatching
         //Debug.Log(point.x.ToString() + ", " + point.y.ToString() + ", " + gridX.ToString() + ", " + gridY.ToString());
     }
 
-    List<Vector2> getSurroudingPoints(int gridX, int gridY)
+    List<Vector2> getSurroundingPoints(int gridX, int gridY)
     {
         List<Vector2> combinedList = new List<Vector2>();
         for (int i = -1; i <= 1; i++)
@@ -100,17 +100,11 @@ public class ProcessHatching
             Vector2 testPoint = new Vector2(u, v);
             if (!isInvalidColor(new Vector2(u, v), 0))
             {
-                bool skip = false;
                 int gridX, gridY; getGridCoords(u, v, out gridX, out gridY);
-                foreach(Vector2 comparePoint in getSurroudingPoints(gridX, gridY)){
-                    if ((testPoint - comparePoint).magnitude < _dSeparation) {
-                        skip = true;
-                        break;
-                    }
-                }
-
-                if (!skip) {
-                    AddLine(new Vector2(u, v));
+                
+                if (CheckSurroundingPoints(testPoint)) {
+                    Vector2 seedPoint = new Vector2(u, v);
+                    AddLine(seedPoint, SamplePixelColorFromTexture(_textures[0], seedPoint));
                     GetNextSeed();
                     return;
                 }
@@ -140,11 +134,12 @@ public class ProcessHatching
                     if (CheckSurroundingPoints(testPoint))
                         if (!isInvalidColor(testPoint, 0))
                         {
-                            if (!(previousDirection == Vector2.zero)) 
-                                if (!(FindBestDirection(previousDirection, testPoint, 0.9f) == Vector2.zero)){
-                                    AddLine(testPoint);
-                                    //DebugPoints.Add(testPoint);
+                            if (!(previousDirection == Vector2.zero)) {
+                                Vector2 initialDirection = FindBestDirection(previousDirection, testPoint, 0.9f, 1.1f);
+                                if (!(initialDirection == Vector2.zero)){
+                                    AddLine(testPoint, initialDirection);
                                 }
+                            }
                         }
                 }
             }
@@ -153,27 +148,24 @@ public class ProcessHatching
         
     }
 
-    void AddLine(Vector2 seed)
+    void AddLine(Vector2 seed, Vector2 initialDirection)
     {
         //Creates new line starting at seed.
         List<Vector2> line = new List<Vector2>();
         List<Vector2> lineDirections = new List<Vector2>();
 
         line.Add(seed);
-        Vector2 initialDirection = SamplePixelColorFromTexture(_textures[0], seed);
         lineDirections.Add(initialDirection);
         foreach (int mult in new int[2]{1, -1}) {
             Vector2 direction;
             Vector2 oldLineDirection;
-            if (mult == -1) {
-                direction = SamplePixelColorFromTexture(_textures[2], seed);
-            }
+            if (mult == -1) direction = FindBestDirection(initialDirection, seed, -1.1f, -0.9f);
             else {
                 direction = initialDirection;
             }
-            
             oldLineDirection = direction;
             Vector2 newPoint = seed;
+            
             for (int i = 0; i < 1000; i++)
             {
                 newPoint = GetNextPoint(newPoint, ref direction, oldLineDirection);
@@ -220,7 +212,7 @@ public class ProcessHatching
         if (!CheckSurroundingPoints(newPoint)) {
             return Vector2.zero;
         }
-        Vector2 new_direction = FindBestDirection(direction, newPoint, 0.95f);
+        Vector2 new_direction = FindBestDirection(direction, newPoint, 0.95f, 1.1f);
         
         if(newPoint == Vector2.zero || new_direction == Vector2.zero) {return Vector2.zero;}
 
@@ -231,7 +223,7 @@ public class ProcessHatching
     bool CheckSurroundingPoints(Vector2 newPoint, bool debug=false){
         int gridX, gridY; getGridCoords(newPoint, out gridX, out gridY);
         if (PointGrid[gridX, gridY] == null) PointGrid[gridX, gridY] = new List<Vector2>();
-        foreach(Vector2 comparePoint in getSurroudingPoints(gridX, gridY)) {
+        foreach(Vector2 comparePoint in getSurroundingPoints(gridX, gridY)) {
             Vector2 compareVector = newPoint - comparePoint;
             if (compareVector.magnitude < _dTest) {
                 if (debug) DebugPoints.Add(newPoint);
@@ -246,6 +238,28 @@ public class ProcessHatching
             Vector2 newDirection = SamplePixelColorFromTexture(_textures[i], samplePoint);
             float cosDiff = Vector2.Dot(direction, newDirection);
             if (cosDiff > cutOff) {
+                return newDirection;
+            }
+        }
+        return Vector2.zero;
+    }
+    
+    Vector2 FindOppositeDirection(Vector2 direction, Vector2 samplePoint, float cutOff){
+        for (int i = 0; i < 4; i++) {
+            Vector2 newDirection = SamplePixelColorFromTexture(_textures[i], samplePoint);
+            float cosDiff = Vector2.Dot(direction, newDirection);
+            if (cosDiff < cutOff) {
+                return newDirection;
+            }
+        }
+        return Vector2.zero;
+    }
+    
+    Vector2 FindBestDirection(Vector2 direction, Vector2 samplePoint, float rangeLow, float rangeHigh){
+        for (int i = 0; i < 4; i++) {
+            Vector2 newDirection = SamplePixelColorFromTexture(_textures[i], samplePoint);
+            float cosDiff = Vector2.Dot(direction, newDirection);
+            if (cosDiff < rangeHigh && cosDiff > rangeLow) {
                 return newDirection;
             }
         }
