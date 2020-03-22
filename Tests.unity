@@ -542,7 +542,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 256
+    m_Bits: 1
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 8400000, guid: e1cce75e409553845a55d603b63ecda0, type: 2}
   m_TargetDisplay: 0
@@ -562,7 +562,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1245920913}
   m_LocalRotation: {x: 0.50979644, y: -0, z: -0, w: 0.860295}
-  m_LocalPosition: {x: -0.12, y: 1.37, z: 1.71}
+  m_LocalPosition: {x: -0.024, y: 1.327, z: 2.815}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -580,11 +580,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c06fbfd7a7e85024f93e358efc9c998a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  getAnImage: 0
+  getAnImage: 1
   dSeparation: 0.01
   dTest: 0.5
   objectsVisible:
-  - {fileID: 0}
+  - {fileID: 1568572202}
   - {fileID: 2986628564522832359}
   - {fileID: 2534866581751287668}
   normalsNDepth: {fileID: 2100000, guid: 6a85a1f87ee31524daaaea32eae3351e, type: 2}
@@ -898,6 +898,10 @@ PrefabInstance:
       propertyPath: m_RootOrder
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 2300000, guid: 4221909ba0b42b5488b38a2dd638a2ad, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: bb81ea2b98d3a154d9e5e4999b8633d7, type: 2}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4221909ba0b42b5488b38a2dd638a2ad, type: 3}
 --- !u!1 &1383931341

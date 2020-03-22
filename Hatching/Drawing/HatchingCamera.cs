@@ -101,7 +101,7 @@ public class HatchingCamera : MonoBehaviour
 
         bitmap = lineBitmap;
         
-        ProcessHatching hatching = new ProcessHatching(texture, dSeparation: dSeparation, dTest: dTest, level:1.0f);
+        ProcessHatching hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, level:1.0f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
