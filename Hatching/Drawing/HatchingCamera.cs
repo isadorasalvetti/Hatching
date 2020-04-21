@@ -6,6 +6,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using UnityEngine;
+using System.IO;
 using UnityEngine.Experimental.Rendering;
 using static ProcessHatching;
 
@@ -99,25 +100,33 @@ public class HatchingCamera : MonoBehaviour
         foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors 90 degrees
         texture[3] = RenderCamera();
 
+        for(int i=0; i< 4; i++) File.WriteAllBytes(HatchingSettings.saveHatchingPath + "img"+ i +".png", texture[i].EncodeToPNG());
+        
         bitmap = lineBitmap;
         
-        ProcessHatching hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, level:1.0f);
+        ProcessHatching hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, level:1.5f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
         hatching.DrawHatchings(bitmap);
-
-        //foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
         
-        //texture = RenderCamera();
-        //hatching = new ProcessHatching(texture, textureAlt, dSeparation: dSeparation, dTest: dTest, level: 0.3f);
-        //Debug.Log("Drawing parallel lines.");
-        //hatching.StartRandomSeed();
-        //hatching.DrawHatchings(bitmap);
+        swapTex2d(ref texture[0], ref texture[1]);
+        swapTex2d(ref texture[2], ref texture[3]);
+        
+        hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, level: 1.5f);
+        Debug.Log("Drawing parallel lines.");
+        hatching.StartRandomSeed();
+        hatching.DrawHatchings(bitmap);
         
         Debug.Log(HatchingSettings.saveHatchingPath + "test" + diff.ToString() + ".png");
         bitmap.Save(HatchingSettings.saveHatchingPath + "test" + diff.ToString() + ".png", new PngEncoder());
         
         foreach (var obj in objectsVisible) obj.GetComponent<GetCurvatures>().RotateVertexColors(); //Rotate all principal directions/ colors
+    }
+    
+    static void swapTex2d(ref Texture2D a, ref Texture2D b) {
+        Texture2D temp = a;
+        a = b;
+        b = temp;
     }
 }

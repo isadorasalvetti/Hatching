@@ -195,14 +195,15 @@ public class CurvatureFilter
         }
     }
 
-    public static Vector3[] AlignDirections(MeshInfo meshInfo, bool connectivity)
+    public static void AlignDirections(MeshInfo meshInfo, bool connectivity)
     {
         Debug.Log("Aligning curvatures");
-        //Debug.Log("Starting with" + showArray(meshInfo.principalDirections));
+        Debug.Log(String.Format("Triangles: {0}, Vertices: {1}, Colors:{2}", 
+            meshInfo.mesh.triangles.Length, meshInfo.mesh.vertices.Length, meshInfo.mesh.colors.Length));
 
         int[] triangles = meshInfo.mesh.triangles;
         bool[] frozenTriangles = new bool[meshInfo.mesh.vertices.Length];
-        Vector3[] normals = meshInfo.mesh.normals;
+        Vector3[] normals = meshInfo.approximatedNormals;
         int maxIterations;
         List<int> trianglePool = new List<int>();
         
@@ -211,14 +212,12 @@ public class CurvatureFilter
             maxIterations = 1000000000;
         }
         
-        else maxIterations = triangles.Length / 3;
+        else maxIterations = triangles.Length/3;
 
         for(int count=0; count < maxIterations; count++)
         {
             int currentTriangle;
-            
-            //Get next triangle to evaluate and its vertices
-            if (connectivity) {
+            if (connectivity) { // Not in use - currently using a mesh where vertices are not shared between triangles.
                 if (trianglePool.Count < 1) {
                     Debug.Log(string.Format("Finished with {0} iteractions", count));
                     break;
@@ -238,10 +237,6 @@ public class CurvatureFilter
             float maxConsistency = -3;
             var maxConsistencyCoef = (0, 0, 0);
 
-            Vector3 pa = meshInfo.principalDirections[tria];
-            Vector3 pb = meshInfo.principalDirections[trib];
-            Vector3 pc = meshInfo.principalDirections[tric];
-
             for (int k = 0; k < 4; k+=1)
                 for (int l = 0; l < 4; l+=1)
                     for (int m = 0; m < 4; m+=1)
@@ -251,30 +246,28 @@ public class CurvatureFilter
                         if(l != 0 && frozenTriangles[trib]) continue;
                         if(m != 0 && frozenTriangles[tric]) continue;
 
-                        Vector3 Di = Quaternion.AngleAxis(90*k, normals[tria]) * pa;
-                        Vector3 Dj = Quaternion.AngleAxis(90*l, normals[trib]) * pb;
-                        Vector3 Dk = Quaternion.AngleAxis(90*m, normals[tric]) * pc;
+                        Vector3 Di = meshInfo.AllPrincipalDirections[tria, k];
+                        Vector3 Dj = meshInfo.AllPrincipalDirections[trib, l];
+                        Vector3 Dk = meshInfo.AllPrincipalDirections[tric, m];
 
-                        float my_consistency = (Vector3.Dot(Di, Dj))
+                        float myConsistency = (Vector3.Dot(Di, Dj))
                                                +(Vector3.Dot(Dj, Dk))
                                                +(Vector3.Dot(Dk, Di));
 
-                        if (my_consistency > maxConsistency + 0.05f) {
-                            maxConsistency = my_consistency;
+                        if (myConsistency > maxConsistency + 0.05f) {
+                            maxConsistency = myConsistency;
                             maxConsistencyCoef = (k, l, m);
                         }
                     }
-                
+            
             //Assign the max consistent vectors per triangle
             int inda = maxConsistencyCoef.Item1;
             int indb = maxConsistencyCoef.Item2;
             int indc = maxConsistencyCoef.Item3;
             
-            //Debug.Log("indices:" + inda.ToString() + indb.ToString() + indc.ToString());
-            //Debug.Log("max consistency:" + maxConsistency);
-            meshInfo.principalDirections[tria] = Quaternion.AngleAxis(90*inda, normals[tria])*meshInfo.principalDirections[tria];
-            meshInfo.principalDirections[trib] = Quaternion.AngleAxis(90*indb, normals[trib])*meshInfo.principalDirections[trib];
-            meshInfo.principalDirections[tric] = Quaternion.AngleAxis(90*indc, normals[tric])*meshInfo.principalDirections[tric];
+            RotatePrincipalDirections(tria, inda, ref meshInfo.AllPrincipalDirections);
+            RotatePrincipalDirections(trib, indb, ref meshInfo.AllPrincipalDirections);
+            RotatePrincipalDirections(tric, indc, ref meshInfo.AllPrincipalDirections);
 
             frozenTriangles[tria] = true;
             frozenTriangles[trib] = true;
@@ -291,7 +284,6 @@ public class CurvatureFilter
         }
         
         //Debug.Log("Finishing with" + showArray(meshInfo.principalDirections));
-        return meshInfo.principalDirections;
     }
 
     private static Vector3 CtoV(Color c){
@@ -302,8 +294,47 @@ public class CurvatureFilter
         return (vec - (Vector3.Dot(vec, normal)) * normal).normalized;           
     }
 
-    public static void RotateAllDirectios(ref Vector3[] directions, Vector3[] normals, float angle) {
-        for (int i = 0; i < directions.Length; i++) directions[i] = Quaternion.AngleAxis(angle, normals[i]) * directions[i];
+    public static void RotateAllDirections(ref Vector3[] directions, Vector3[] normals, float angle) {
+        for (int i = 0; i < directions.Length; i++) {
+            directions[i] = Quaternion.AngleAxis(angle, normals[i]) * directions[i];
+        }
+    }
+    
+    static void swapVec3(ref Vector3 a, ref Vector3 b) {
+        Vector3 temp = a;
+        a = b;
+        b = temp;
+    }
+
+    static void RotatePrincipalDirections(int index, int newFirst, ref Vector3[,] directions) {
+        if (newFirst == 0) return;
+        Vector3 temp = directions[index, 0];
+        for (int i = 0; i < newFirst; i++)
+            for (int j = 0; j < 4; j++) {
+                Vector3 nextDirection;
+                if (j >= 3) nextDirection = temp;
+                else nextDirection = directions[index, j + 1];
+                directions[index, j] = nextDirection;
+            }
+    }
+
+    public static void DuplicateMeshVertices(Mesh mesh, bool colors = false) {
+        Vector3[] newVertices = new Vector3[mesh.triangles.Length];
+        Vector3[] newNormals = new Vector3[mesh.triangles.Length];
+        Color[] newColors = new Color[mesh.triangles.Length];
+        int[] newFaces = new int[mesh.triangles.Length];
+        
+        for (int i = 0; i < mesh.triangles.Length; i++) {
+                newFaces[i] = i;
+                newVertices[i] = mesh.vertices[mesh.triangles[i]];
+                if (colors) newColors[i] = mesh.colors[mesh.triangles[i]];
+                newNormals[i] = mesh.normals[mesh.triangles[i]];
+        }
+
+        mesh.vertices = newVertices;
+        mesh.triangles = newFaces;
+        mesh.normals = newNormals;
+        if (colors) mesh.colors = newColors;
     }
 
 }

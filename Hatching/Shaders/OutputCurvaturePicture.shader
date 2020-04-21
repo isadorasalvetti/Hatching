@@ -46,8 +46,7 @@
                 o.color.w = 0;
                 o.color =  UnityObjectToClipPos(v.color);
                 o.normal = normalize(UnityObjectToWorldNormal(normalize(v.normal)));
-                o.viewDir = normalize(UnityWorldSpaceViewDir(mul(unity_ObjectToWorld, v.vertex)));
-                //o.vertex = UnityObjectToClipPos(float4((v.uv-0.5f)*2, 1, 1));                
+                o.viewDir = normalize(UnityWorldSpaceViewDir(mul(unity_ObjectToWorld, v.vertex)));            
 
                 return o;
             }
@@ -61,7 +60,7 @@
                 float light = 1 - samp/2.0;
                 
                 fixed2 curv_direction = normalize(i.color.xy);
-                fixed4 col = fixed4(curv_direction*0.5 + 0.5, i.color.z, 1);
+                fixed4 col = fixed4(curv_direction*0.5 + 0.5, 0, 1);
                 return col;
             }
             ENDCG

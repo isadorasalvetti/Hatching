@@ -580,7 +580,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c06fbfd7a7e85024f93e358efc9c998a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  getAnImage: 1
+  getAnImage: 0
   dSeparation: 0.01
   dTest: 0.5
   objectsVisible:
@@ -902,6 +902,10 @@ PrefabInstance:
       propertyPath: m_Materials.Array.data[0]
       value: 
       objectReference: {fileID: 2100000, guid: bb81ea2b98d3a154d9e5e4999b8633d7, type: 2}
+    - target: {fileID: 3300000, guid: 4221909ba0b42b5488b38a2dd638a2ad, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: 4221909ba0b42b5488b38a2dd638a2ad, type: 3}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4221909ba0b42b5488b38a2dd638a2ad, type: 3}
 --- !u!1 &1383931341
@@ -1196,6 +1200,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8b6272cb4ab060468112d090ec2155e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  storedName: TorusFirst
+  loadingName: AnaliticFirstTorus
 --- !u!4 &1578492031 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 4221909ba0b42b5488b38a2dd638a2ad,
@@ -1593,6 +1599,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8b6272cb4ab060468112d090ec2155e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  storedName: 
+  loadingName: 
 --- !u!33 &2834078682986045201
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -1632,6 +1640,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8b6272cb4ab060468112d090ec2155e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  storedName: 
+  loadingName: 
 --- !u!4 &3248338879176444866
 Transform:
   m_ObjectHideFlags: 0

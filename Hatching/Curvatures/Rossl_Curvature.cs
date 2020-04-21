@@ -41,14 +41,36 @@ public static class RosslCurvature {
             List<int> neighboors = GetOrderedNeighboors(meshInfo.mesh, i, cornerTable);
             meshInfo.neighboohood.Add(neighboors);
             float[] r, phi;
+            
             Matrix<float> F;
             MakeExponentialMap(meshInfo.mesh, i, neighboors, out r, out phi);
             GetUVF(meshInfo.mesh, r, phi, neighboors.ToArray(), i, out F);
-            GetCurvatures(F, i, ref outData);
-            meshInfo.principalDirections[i] = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), outData.d1[i][0], outData.d1[i][1]);
+            GetCurvatures(F, i, ref outData, meshInfo.mesh.normals[i]);
+            Vector3[] pds = GetTransformedValues(F, ref outData, i);
+            FixPdsOrder(ref pds, outData.normal);
+            meshInfo.approximatedNormals[i] = outData.normal;
+            meshInfo.principalDirections[i] = pds[0];
+            for(int j=0; j < 4; j++) meshInfo.AllPrincipalDirections[i, j] = pds[j];
+            //Debug.Log(String.Format("Vert: {0}, Curv: {1}, {2}", meshInfo.mesh.vertices[i],
+            //    meshInfo.AllPrincipalDirections[i, 0], meshInfo.AllPrincipalDirections[i, 1]));
         }
+        meshInfo.curvatureRatios = ComputeCurvatureRatio(outData.k1, outData.k2); 
+    }
 
-        meshInfo.curvatureRatios = ComputeCurvatureRatio(outData.k1, outData.k2);
+    private static Vector3[] GetTransformedValues(Matrix<float> F, ref CurvatureData outData, int i) {
+        Vector3 pd1 = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), 
+            outData.d1[i][0], outData.d1[i][1]);
+        Vector3 pd2 = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), 
+            outData.d2[i][0], outData.d2[i][1]);
+        Vector3 pd3 = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), // inverse pd1 
+            -outData.d1[i][0], -outData.d1[i][1]);
+        Vector3 pd4 = ParametricTo3D(vectorToUnity(F.Row(0)), vectorToUnity(F.Row(1)), // inverse pd2
+            -outData.d2[i][0], -outData.d2[i][1]);
+
+        return new Vector3[] {pd1, pd2, pd3, pd4};
+
+        //Check order
+        //Debug.Log(String.Format("{0}, {1}, {2}, {3}", pd1, pd2, pd3, pd4));
     }
 
     static Vector3 vectorToUnity(Vector<float> v){
@@ -153,7 +175,7 @@ public static class RosslCurvature {
             V[i, 1] = vi;
             V[i, 2] = ui*ui/2;
             V[i, 3] = ui*vi;
-            V[i, 4] = vi*vi/2; 
+            V[i, 4] = vi*vi/2;
         }
         Matrix<float> Vm = DenseMatrix.OfArray(V);
         Matrix<float> Qm = DenseMatrix.OfArray(Q);
@@ -169,14 +191,18 @@ public static class RosslCurvature {
         return F;
     }
 
-    static void GetCurvatures(Matrix<float> F, int v, ref CurvatureData outData) { // F: Fu, Fv, Fuu, Fuv, Fvv
+    static void GetCurvatures(Matrix<float> F, int v, ref CurvatureData outData, Vector3 normal) { // F: Fu, Fv, Fuu, Fuv, Fvv
         //float lambda1, lambda2, k1, k2;
 
         Vector3 Fu = new Vector3(F[0, 0], F[0, 1], F[0, 2]);
         Vector3 Fv = new Vector3(F[1, 0], F[1, 1], F[1, 2]);
-        Vector3 Nu = Vector3.Cross(Fu, Fv).normalized;
+        Vector3 Nu = Vector3.Cross(Fv, Fu).normalized;
         Vector<float> N = DenseVector.OfArray(new float[]{Nu.x, Nu.y, Nu.z});
         
+        //DEBUG real normmal vs approximated normal 
+        //float normalDifference = (normal.normalized - Nu.normalized).magnitude;
+        //if(normalDifference > 0.028) Debug.Log(Nu.ToString() + normal.ToString() + ", " + normalDifference.ToString());
+
         float e = F.Row(0).DotProduct(F.Row(0));
         float f = F.Row(1).DotProduct(F.Row(0));
         float g = F.Row(1).DotProduct(F.Row(1));
@@ -194,6 +220,8 @@ public static class RosslCurvature {
         outData.d2[v] = eigenVectors.Row(1);
         outData.k1[v] = (float)eigenValues.At(0).Real;
         outData.k2[v] = (float)eigenValues.At(1).Real;
+
+        outData.normal = Nu;
         
         if (outData.k1[v] < outData.k2[v]) return;
 
@@ -208,7 +236,17 @@ public static class RosslCurvature {
     }
 
     static Vector3 ParametricTo3D(Vector3 Fu, Vector3 Fv, float u, float v) {
-        return (v * Fu.normalized + u * Fv.normalized).normalized;
+        Vector3 vec = (v * Fu.normalized + u * Fv.normalized).normalized;
+        // vec.y = -vec.y;
+        return vec;
+    }
+
+    static void FixPdsOrder(ref Vector3[] pds, Vector3 normal) {
+        //pds[1] must be to the right to pds[0].
+        Vector3 cross = Vector3.Cross(pds[0], pds[1]);
+        if (Vector3.Dot(normal, cross) < 0) { // Or > 0
+            swap(ref pds[1], ref pds[3]);
+        }
     }
 
     static void ScalePhi(ref float[] phi, float maxAngle){

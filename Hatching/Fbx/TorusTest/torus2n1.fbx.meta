@@ -1,13 +1,14 @@
 fileFormatVersion: 2
-guid: 4221909ba0b42b5488b38a2dd638a2ad
+guid: 5d4f89237fa784745babbfa7fab29f37
 ModelImporter:
   serializedVersion: 23
   fileIDToRecycleName:
     100000: //RootNode
     400000: //RootNode
+    2100000: No Name
     2300000: //RootNode
     3300000: //RootNode
-    4300000: pTorus1
+    4300000: Torus
   externalObjects: {}
   materials:
     importMaterials: 0
@@ -65,7 +66,7 @@ ModelImporter:
   tangentSpace:
     normalSmoothAngle: 180
     normalImportMode: 1
-    tangentImportMode: 2
+    tangentImportMode: 3
     normalCalculationMode: 4
     legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
     blendShapeNormalImportMode: 1
