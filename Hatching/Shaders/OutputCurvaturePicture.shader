@@ -31,10 +31,10 @@
 
             struct v2f
             {
-                float4 color : COLOR;
                 float4 vertex : SV_POSITION;
                 float3 normal: NORMAL;
                 float3 viewDir : TEXCOORD2;
+                float4 pdReferencePoint : TEXCOORD3;          
             };
 
             float _WhiteOffset;
@@ -42,12 +42,12 @@
             v2f vert (appdata v)
             {
                 v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.color.w = 0;
-                o.color =  UnityObjectToClipPos(v.color);
+                fixed4 vertexPosition = UnityObjectToClipPos(v.vertex);
+                fixed4 PDirection = fixed4(v.color.xyz, 0);
+                o.vertex = vertexPosition;
+                o.pdReferencePoint = UnityObjectToClipPos(vertexPosition + PDirection);
                 o.normal = normalize(UnityObjectToWorldNormal(normalize(v.normal)));
                 o.viewDir = normalize(UnityWorldSpaceViewDir(mul(unity_ObjectToWorld, v.vertex)));            
-
                 return o;
             }
 
@@ -58,9 +58,9 @@
                 float ndotv = saturate(dot(i.normal, i.viewDir));     
                 int samp = ((1-ndotl)*2 - _WhiteOffset);
                 float light = 1 - samp/2.0;
-                
-                fixed2 curv_direction = normalize(i.color.xy);
-                fixed4 col = fixed4(curv_direction*0.5 + 0.5, 0, 1);
+                fixed4 curvDirection4 = i.pdReferencePoint - i.vertex;
+                fixed2 curvDirection2 = normalize(fixed4(curvDirection4.xyz*0.5 + 0.5, 0));
+                fixed4 col = fixed4(curvDirection2, 0, 1);
                 return col;
             }
             ENDCG

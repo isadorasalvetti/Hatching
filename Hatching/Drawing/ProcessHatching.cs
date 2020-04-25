@@ -61,6 +61,23 @@ public class ProcessHatching
         return texture.GetPixel(x, y);
     }
 
+    bool checkSurroundingPixelColors(Texture2D texture, Vector2 centerPoint, int radius, Vector3 target) {
+        float tolerance = 0.05f;
+        int uStart = (int)centerPoint.x - radius/2;
+        int vStart = (int)centerPoint.y - radius/2;
+        for (int i = 0; i < radius; i++) {
+            for (int j = 0; j < radius; j++) {
+                int uSample = uStart + i;
+                int vSample = vStart + j;
+                Color sampleColor = readTexturePixel(texture, uSample, vSample);
+                float diffMin = (new Vector3(sampleColor.r, sampleColor.g, sampleColor.b) - target).magnitude;
+                float diffPlus = (new Vector3(sampleColor.r, sampleColor.g, sampleColor.b) + target).magnitude;
+                if (diffMin < tolerance || diffPlus < tolerance) return true;
+            }    
+        }
+        return false;
+    }
+
     bool IsPositionOutTexture(Vector2 newPoint) {
         return newPoint.x < 0 || newPoint.y < 0 || newPoint.x > _textures[0].width || newPoint.y > _textures[0].height;
     }
@@ -127,7 +144,7 @@ public class ProcessHatching
                     Vector2 point = line[i];
                     Vector2 previousDirection = directions[i];
                     Vector2 perpendicularDirection = FindBestDirection(previousDirection, point, -0.7f, 0.7f);
-                    if (mult == -1) perpendicularDirection = FindBestDirection(previousDirection, point, -1.1f, -0.9f);
+                    if (mult == -1) perpendicularDirection *= -1;
 
                     Vector2 testPoint = point + _dSeparation * perpendicularDirection;
                     if (testPoint.x < 0 || testPoint.y < 0 || testPoint.x > _textures[0].width ||
@@ -318,7 +335,24 @@ public class ProcessHatching
         }
         return lastPointFound;
     }
-    
+
+    List<List<Vector2>> SoftenLine(List<Vector2> line, int minNumberPoints) {
+        // Softens the ends of the line by removing segments.
+        // Returns a list of the lines created by this process or null if division was not possible.
+        if (line.Count < minNumberPoints) return null;
+
+        List<List<Vector2>> splitLines = new List<List<Vector2>>();
+        Vector2 lineStart = line[0];
+        if (!checkSurroundingPixelColors(_outline, lineStart, 3, Vector3.zero)) {
+            // This pixel is not at or close to border. soften.
+            //int[] fragmentSizes = new int[] {0, }
+        }
+
+        Vector2 lineEnd = line[line.Count-1];
+        
+        return splitLines;
+    }
+
     Rgba32[] colors = {Rgba32.Blue, Rgba32.Black, Rgba32.Purple, Rgba32.Yellow, Rgba32.Green};
     public void DrawHatchings(Image bitmap)
     {
