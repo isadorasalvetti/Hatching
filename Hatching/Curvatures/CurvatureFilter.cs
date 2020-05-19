@@ -319,8 +319,10 @@ public class CurvatureFilter
     }
 
     public static void DuplicateMeshVertices(Mesh mesh, bool colors = false) {
+        Debug.Log("Duplicated mesh vertices");
         Vector3[] newVertices = new Vector3[mesh.triangles.Length];
         Vector3[] newNormals = new Vector3[mesh.triangles.Length];
+        Vector2[] newUV = new Vector2[mesh.triangles.Length];
         Color[] newColors = new Color[mesh.triangles.Length];
         int[] newFaces = new int[mesh.triangles.Length];
         
@@ -329,11 +331,13 @@ public class CurvatureFilter
                 newVertices[i] = mesh.vertices[mesh.triangles[i]];
                 if (colors) newColors[i] = mesh.colors[mesh.triangles[i]];
                 newNormals[i] = mesh.normals[mesh.triangles[i]];
+                newUV[i] = mesh.uv[mesh.triangles[i]];
         }
 
         mesh.vertices = newVertices;
         mesh.triangles = newFaces;
         mesh.normals = newNormals;
+        mesh.uv = newUV;
         if (colors) mesh.colors = newColors;
     }
 

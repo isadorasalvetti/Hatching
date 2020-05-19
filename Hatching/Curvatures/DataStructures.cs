@@ -32,6 +32,8 @@ public struct MeshInfo
     public Vector3[] principalDirections;
     public Vector3[,] AllPrincipalDirections;
     public Vector3[] approximatedNormals;
+    public Vector2[] uvCurvatures;
+    public bool uvsProjected;
 
     public MeshInfo(Mesh myMesh)
     {
@@ -41,7 +43,9 @@ public struct MeshInfo
         AllPrincipalDirections = new Vector3[myMesh.vertices.Length, 4];
         approximatedNormals = new Vector3[myMesh.vertices.Length];
         curvatureRatios = new float[myMesh.vertices.Length];
+        uvCurvatures = new Vector2[myMesh.vertices.Length];
         neighboohood = new List<List<int>>();
+        uvsProjected = false;
     }
 
     public Vector3[] GetaDirection(int index) {

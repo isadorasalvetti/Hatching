@@ -161,9 +161,6 @@ public class GetCurvatures : MonoBehaviour {
 
         smoothMesh.triangles = triangles;
         smoothMesh.RecalculateNormals(180);
-        //Debug.Log("New vertices: " + smoothMesh.vertices.Length.ToString() + ", Old vertices: " + mesh.vertices.Length.ToString());
-        //Debug.Log("Faces: " + string.Join(", ", new List<int>(smoothMesh.triangles).ConvertAll(j => j.ToString())));
-        //Debug.Log("Normal (sample): " + smoothMesh.normals[2].ToString() + " vs: " + mesh.normals[2].ToString());
         return smoothMesh;
     }
 
@@ -215,6 +212,13 @@ public class GetCurvatures : MonoBehaviour {
             Vector3[] colorsAsVectors = colors.ConvertAll(j => new Vector3(j.r, j.g, j.b)).ToArray();
             CurvatureFilter.RotateAllDirections(ref colorsAsVectors, meshFilter.mesh.normals, 90);
             meshFilter.mesh.SetColors(new List<Vector3>(colorsAsVectors).ConvertAll(j => new Color(j.x, j.y, j.z)));
+        }
+    }
+
+    public void ApplyUVDirections() {
+        for (int i = 0; i < _meshInfosDuplicated.Length; i++) {
+            _meshInfosDuplicated[i].uvCurvatures = ProjectToUV.GetUVCurvatures(_meshInfosDuplicated[i]);
+            _meshInfosDuplicated[i].uvsProjected = true;
         }
     }
 

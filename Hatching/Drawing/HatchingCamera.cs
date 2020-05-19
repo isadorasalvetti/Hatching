@@ -7,6 +7,7 @@ using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using UnityEngine;
 using System.IO;
+using UnityEditor.Experimental.UIElements.GraphView;
 using UnityEngine.Experimental.Rendering;
 using static ProcessHatching;
 
@@ -86,8 +87,7 @@ public class HatchingCamera : MonoBehaviour
         
         Image lineBitmap = Image.Load<Rgba32>(textureOutline.EncodeToPNG());
         //bitmap.Save(HatchingSettings.saveHatchingPath + "Outline" + diff.ToString() + ".png", new PngEncoder());
-        
-        
+
         // Hatching
         changeMaterials(principalDirections);
         Texture2D[] texture = new Texture2D[4];
@@ -102,20 +102,28 @@ public class HatchingCamera : MonoBehaviour
 
         for(int i=0; i< 4; i++) File.WriteAllBytes(HatchingSettings.saveHatchingPath + "img"+ i +".png", texture[i].EncodeToPNG());
         
-        bitmap = lineBitmap;
+        //bitmap = lineBitmap;
+        bitmap = new Image<Rgba32>(textureOutline.width, textureOutline.height);
         
         ProcessHatching hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, level:1.5f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
+        //hatching.SoftenComputedLines();
         hatching.DrawHatchings(bitmap);
+
+        List<Vector2>[,] PointGrid, DirectionGrtid;
+        hatching.GetCompareGrids(out PointGrid, out DirectionGrtid);
         
         swapTex2d(ref texture[0], ref texture[1]);
         swapTex2d(ref texture[2], ref texture[3]);
         
         hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, level: 1.5f);
+        hatching.SetCompareGrids(PointGrid, DirectionGrtid);
+        
         Debug.Log("Drawing parallel lines.");
         hatching.StartRandomSeed();
+        //hatching.SoftenComputedLines();
         hatching.DrawHatchings(bitmap);
         
         Debug.Log(HatchingSettings.saveHatchingPath + "test" + diff.ToString() + ".png");

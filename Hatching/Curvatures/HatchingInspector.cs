@@ -27,6 +27,7 @@ public class ObjectBuilderEditor : Editor
         GUILine();
         if (GUILayout.Button("Optimize Current Directions")) myScript.OptimizePrincipalDirections(HatchingSettings.minRatio);
         else if(GUILayout.Button("Rotate all directions 90 degres")) myScript.RotatePrincipalDirections(90);
+        else if (GUILayout.Button("Project Curvatures to UV")) myScript.ApplyUVDirections();
         else if(GUILayout.Button("Load from file")) myScript.ReadCurvatureFromXML();
         
         GUILayout.Label("View");

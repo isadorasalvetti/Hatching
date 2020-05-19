@@ -582,7 +582,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   getAnImage: 0
   dSeparation: 0.01
-  dTest: 0.5
+  dTest: 0.8
   objectsVisible:
   - {fileID: 1568572202}
   - {fileID: 2986628564522832359}
