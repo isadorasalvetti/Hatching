@@ -26,7 +26,7 @@
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
+                float4 color : COLOR;
                 float4 vertex : SV_POSITION;
             };
 
@@ -36,13 +36,18 @@
             v2f vert (appdata v)
             {
                 v2f o;
-                o.vertex = float4(v.uv*2-fixed2(1, 1), 0, 1);
+                o.vertex.x = v.uv.x * 2 - 1;
+                o.vertex.y = -(v.uv.y * 2 - 1);
+                o.vertex.z = 0;
+                o.vertex.w = 1;
+                o.color = (v.color+fixed4(1, 1, 1, 0))/2;
+                o.color.w = 1;
                 return o;
             }
 
             fixed4 frag (v2f i) : SV_Target
             {
-                fixed4 col = fixed4(1, 0, 0, 1);
+                fixed4 col = i.color;
                 return col;
             }
             ENDCG

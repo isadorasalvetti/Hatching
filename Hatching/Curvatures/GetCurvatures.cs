@@ -206,8 +206,6 @@ public class GetCurvatures : MonoBehaviour {
         for(int i=0; i < meshes.Length; i++) {
             var meshFilter = meshes[i];
             rotationCount += 1;
-            //Debug.Log(i);
-            //Vector3[] rotatedDirections = _meshInfosDuplicated[i].GetaDirection(rotationCount % 4);
             List<Color> colors = new List<Color>(meshFilter.mesh.colors);
             Vector3[] colorsAsVectors = colors.ConvertAll(j => new Vector3(j.r, j.g, j.b)).ToArray();
             CurvatureFilter.RotateAllDirections(ref colorsAsVectors, meshFilter.mesh.normals, 90);
@@ -219,6 +217,8 @@ public class GetCurvatures : MonoBehaviour {
         for (int i = 0; i < _meshInfosDuplicated.Length; i++) {
             _meshInfosDuplicated[i].uvCurvatures = ProjectToUV.GetUVCurvatures(_meshInfosDuplicated[i]);
             _meshInfosDuplicated[i].uvsProjected = true;
+            var mesh = _mesheFilters[i].sharedMesh;
+            mesh.colors = Array.ConvertAll(_meshInfosDuplicated[i].uvCurvatures, j => new Color(j.x, j.y, 0, 1));
         }
     }
 

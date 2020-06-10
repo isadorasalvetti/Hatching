@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -28,13 +29,16 @@ public class ProjectToUV
             
             for (int j = 0; j < 3; j++) {
                 Vector3 pd = meshInfo.principalDirections[i*3 + j];
-                Vector3 pointPCurvature = verts[j] + pd;
+                Vector3 pointPCurvature = verts[j] + pd*0.2f;
                 Vector3 projectedPointP = ProjectPointPlane(pointPCurvature, trianglePlane);
 
                 float[] triangleAreas = GetTriangleAreas(verts[0], verts[1], verts[2], projectedPointP);
                 Vector2 pointPuv = BaricentricInterpolation(triangleAreas, uvs);
                 Vector2 uvPD = uvs[j] - pointPuv;
-                uvPDs[vertIndices[j]] = uvPD;
+                
+                uvPDs[vertIndices[j]] = uvPD.normalized;
+                Debug.Log(String.Format("Direction: {0}, Areas: {1}, {2}, {3}, Point: {4}, Direction: {5}, UV: {6}, pUV: {7}", 
+                    uvPD, triangleAreas[0], triangleAreas[1], triangleAreas[2], verts[j], pd, uvs[j], pointPuv));
             }
         }
         Debug.Log("Projected curvatures to uv");
@@ -45,20 +49,28 @@ public class ProjectToUV
         Vector2 outInterpolated = Vector2.zero; 
         float totalArea = 0; foreach (float area in areas) totalArea += area;
         for (int i = 0; i < pointValues.Length; i++) {
-            outInterpolated += pointValues[i] * areas[i] / totalArea;
+            Vector2 areaContribution = pointValues[i] * areas[i] / totalArea;
+            outInterpolated += areaContribution;
         }
         return outInterpolated;
     }
 
 
     private static float[] GetTriangleAreas(Vector3 p1, Vector3 p2, Vector3 p3, Vector3 center) {
-        float[] areas = new float[3];
-        
-        areas[0] = Vector3.Cross(p2 - p1, center - p1).magnitude / 2;
-        areas[1] = Vector3.Cross(p3 - p2, center - p2).magnitude / 2;
-        areas[2] = Vector3.Cross(p2 - p3, center - p3).magnitude / 2;
+        float[] weights = new float[3];
+       
+        Vector3 v0 = p2 - p1, v1= p3 - p1, v2 = center - p1;
+        float d00 = Vector3.Dot(v0, v0);
+        float d01 = Vector3.Dot(v0, v1);
+        float d11 = Vector3.Dot(v1, v1);
+        float d20 = Vector3.Dot(v2, v0);
+        float d21 = Vector3.Dot(v2, v1);
+        float invDenom = 1.0f / (d00 * d11 - d01 * d01);
+        weights[0] = (d11 * d20 - d01 * d21) * invDenom;
+        weights[1] = (d00 * d21 - d01 * d20) * invDenom;
+        weights[2] = 1.0f - weights[0] - weights[1];
 
-        return areas;
+        return weights;
     }
 
     int GetPointTriangleIndex(int vertex, int[] triangles){

@@ -57,7 +57,6 @@
             {
                 //lighting                
                 float ndotl = dot(i.normal, _WorldSpaceLightPos0);
-                float ndotv = saturate(dot(i.normal, i.viewDir));     
                 int samp = ((1-ndotl)*2 - _WhiteOffset);
                 float light = 1 - samp/2.0;
                 
@@ -66,7 +65,12 @@
                 
                 fixed2 curvDirection2 = normalize(pdEndPoint.xy - pdStartPoint.xy);
                 curvDirection2 = fixed2(curvDirection2*0.5 + 0.5);
-                fixed4 col = fixed4(curvDirection2, 0, 1);
+                
+                float ndotv = dot(i.normal, i.viewDir);     
+                //fixed4 col = fixed4(curvDirection2, ndotv*ndotv, 1);
+                //fixed4 col = fixed4(curvDirection2, 0, 1);
+                fixed4 col = fixed4(ndotv*ndotv, ndotv*ndotv, ndotv*ndotv, 1);
+                //fixed4 col = fixed4(light, light, light, 1);
                 return col;
             }
             ENDCG

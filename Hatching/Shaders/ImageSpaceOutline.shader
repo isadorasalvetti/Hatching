@@ -10,7 +10,7 @@
     SubShader
     {
         // No culling or depth
-        Cull Off ZWrite Off ZTest Always
+        //Cull Off ZWrite Off ZTest Always
 
         Pass
         {
@@ -24,18 +24,23 @@
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
+                float3 normal: NORMAL;
             };
 
             struct v2f
             {
                 float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
+                float3 viewDir : TEXCOORD2;
+                float3 normal: TEXCOORD1;
             };
 
             v2f vert (appdata v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
+                o.viewDir = normalize(UnityWorldSpaceViewDir(mul(unity_ObjectToWorld, v.vertex)));
+                o.normal = normalize(UnityObjectToWorldNormal(v.normal));
                 o.uv = v.uv;
                 return o;
             }
@@ -82,8 +87,11 @@
                 edgeNormal = edgeNormal > _NormalThreshold ? 1 : 0;
                 
                 float edge = 1 - max(edgeDepth, edgeNormal);
+                
+                float ndotv = saturate(dot(i.normal, i.viewDir)*4);
+                ndotv = pow(ndotv, 16);     
 
-                float4 col = float4(edge, edge, edge, 1);
+                float4 col = float4(ndotv, ndotv, ndotv, 1);
                 return col;
             }
             ENDCG
