@@ -331,13 +331,13 @@ public class CurvatureFilter
                 newVertices[i] = mesh.vertices[mesh.triangles[i]];
                 if (colors) newColors[i] = mesh.colors[mesh.triangles[i]];
                 newNormals[i] = mesh.normals[mesh.triangles[i]];
-                newUV[i] = mesh.uv[mesh.triangles[i]];
+                //newUV[i] = mesh.uv[mesh.triangles[i]];
         }
 
         mesh.vertices = newVertices;
         mesh.triangles = newFaces;
         mesh.normals = newNormals;
-        mesh.uv = newUV;
+        //mesh.uv = newUV;
         if (colors) mesh.colors = newColors;
     }
 

@@ -91,7 +91,7 @@
                 float ndotv = saturate(dot(i.normal, i.viewDir)*4);
                 ndotv = pow(ndotv, 16);     
 
-                float4 col = float4(ndotv, ndotv, ndotv, 1);
+                float4 col = float4(edge, edge, edge, 1);
                 return col;
             }
             ENDCG

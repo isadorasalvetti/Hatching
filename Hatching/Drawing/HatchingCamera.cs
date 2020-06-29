@@ -40,11 +40,15 @@ public class HatchingCamera : MonoBehaviour
             diff = 0;
             getAnImage = false;
             for (int i = 0; i < 1; i++) {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
                 MakeHatching();
                 //foreach (var mesh in objectsVisible) {
                     //mesh.transform.Rotate(Vector3.left, 10);
                 //}
                 diff++;
+                watch.Stop();
+                var elapsedMs = watch.ElapsedMilliseconds;
+                Debug.Log(String.Format("Time elapsed: {0}", elapsedMs));
             }
         }
 
@@ -126,7 +130,7 @@ public class HatchingCamera : MonoBehaviour
         //bitmap = lineBitmap;
         bitmap = new Image<Rgba32>(texture[0].width, texture[0].height);
         
-        ProcessHatching hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest);
+        ProcessHatching hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest, gridSize: 0, level:0.7f);
                 
         Debug.Log(string.Format("Started drawing lines. dSeparation: {0}, dTest: {1}%", dSeparation, dTest));
         hatching.StartRandomSeed();
@@ -139,7 +143,7 @@ public class HatchingCamera : MonoBehaviour
         swapTex2d(ref texture[0], ref texture[1]);
         swapTex2d(ref texture[2], ref texture[3]);
         
-        hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest);
+        hatching = new ProcessHatching(texture, textureOutline, dSeparation: dSeparation, dTest: dTest,  gridSize: 0, level:0.2f);
         hatching.SetCompareGrids(PointGrid, DirectionGrtid);
         
         Debug.Log("Drawing perpendicular lines.");

@@ -67,9 +67,9 @@
                 curvDirection2 = fixed2(curvDirection2*0.5 + 0.5);
                 
                 float ndotv = dot(i.normal, i.viewDir);     
-                //fixed4 col = fixed4(curvDirection2, ndotv*ndotv, 1);
+                fixed4 col = fixed4(curvDirection2, ndotv*ndotv, light);
                 //fixed4 col = fixed4(curvDirection2, 0, 1);
-                fixed4 col = fixed4(ndotv*ndotv, ndotv*ndotv, ndotv*ndotv, 1);
+                //fixed4 col = fixed4(ndotv*ndotv, ndotv*ndotv, ndotv*ndotv, 1);
                 //fixed4 col = fixed4(light, light, light, 1);
                 return col;
             }
